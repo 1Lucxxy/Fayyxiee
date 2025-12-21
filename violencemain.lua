@@ -1,189 +1,175 @@
---==================================
--- RAYFIELD LOAD
---==================================
-local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
+-- =========================
+-- DELTA SAFE LOAD
+-- =========================
+repeat task.wait() until game:IsLoaded()
 
---==================================
--- SERVICES
---==================================
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local LocalPlayer = Players.LocalPlayer
-local Camera = workspace.CurrentCamera
+local Rayfield = loadstring(game:HttpGet(
+    "https://raw.githubusercontent.com/shlexware/Rayfield/main/source.lua",
+    true
+))()
 
---==================================
--- WINDOW
---==================================
 local Window = Rayfield:CreateWindow({
-    Name = "ESP Highlight (Team Based)",
-    LoadingTitle = "ESP System",
-    LoadingSubtitle = "Final & Stable",
-    ConfigurationSaving = { Enabled = false }
+    Name = "Visual Hub",
+    LoadingTitle = "Loading",
+    LoadingSubtitle = "Delta Fixed",
+    ConfigurationSaving = {
+        Enabled = false
+    }
 })
 
-local Tab = Window:CreateTab("ESP", 4483362458)
+-- =========================
+-- SERVICES
+-- =========================
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local LocalPlayer = Players.LocalPlayer
 
---==================================
--- HIGHLIGHT CORE
---==================================
-local Highlights = {}
-
-local function addHighlight(obj, color)
-    if not obj or Highlights[obj] then return end
-    local h = Instance.new("Highlight")
-    h.Adornee = obj
-    h.FillColor = color
-    h.FillTransparency = 0.8
-    h.OutlineColor = Color3.new(0,0,0)
-    h.OutlineTransparency = 0.2
-    h.Parent = obj
-    Highlights[obj] = h
-end
-
-local function clearHighlights()
-    for _,h in pairs(Highlights) do
-        if h then h:Destroy() end
-    end
-    table.clear(Highlights)
-end
-
---==================================
--- PLAYER ESP (TEAM SYSTEM ✔)
---==================================
-local PlayerESPEnabled = false
-
-local function updatePlayers()
-    if not PlayerESPEnabled then return end
-
-    for _,plr in ipairs(Players:GetPlayers()) do
-        if plr ~= LocalPlayer
-        and plr.Team
-        and plr.Character
-        and plr.Character:FindFirstChild("HumanoidRootPart") then
-
-            local teamName = string.lower(plr.Team.Name)
-
-            if teamName == "killer" then
-                addHighlight(plr.Character, Color3.fromRGB(255,0,0)) -- KILLER
-            elseif teamName == "survivor" then
-                addHighlight(plr.Character, Color3.fromRGB(0,255,0)) -- SURVIVOR
-            end
-        end
-    end
-end
-
--- update ringan
-task.spawn(function()
-    while task.wait(1) do
-        updatePlayers()
-    end
-end)
-
-Tab:CreateToggle({
-    Name = "Highlight Survivor & Killer",
-    CurrentValue = false,
-    Callback = function(v)
-        PlayerESPEnabled = v
-        if not v then clearHighlights() end
-    end
-})
-
---==================================
--- MODEL CACHE (ANTI FPS DROP)
---==================================
-local ModelCache = {
+-- =========================
+-- HIGHLIGHT STORAGE (DIPISAH)
+-- =========================
+local Highlights = {
+    Player = {},
+    NPC = {},
     Generator = {},
     Hook = {},
     Window = {},
     Gift = {}
 }
 
--- scan SEKALI
-for _,v in ipairs(workspace:GetDescendants()) do
-    if v:IsA("Model") and ModelCache[v.Name] then
-        table.insert(ModelCache[v.Name], v)
+-- =========================
+-- HIGHLIGHT UTILS (FIXED)
+-- =========================
+local function createHighlight(model, color, store)
+    if not model then return end
+    if model:FindFirstChild("RF_HL") then return end
+    if not model:FindFirstChildWhichIsA("BasePart") then return end
+
+    local hl = Instance.new("Highlight")
+    hl.Name = "RF_HL"
+    hl.Adornee = model
+    hl.FillColor = color
+    hl.OutlineColor = Color3.new(1,1,1)
+    hl.FillTransparency = 0.45
+    hl.OutlineTransparency = 0
+    hl.Parent = model
+
+    table.insert(store, hl)
+end
+
+local function removeHighlights(store)
+    for _, hl in pairs(store) do
+        if hl and hl.Parent then
+            hl:Destroy()
+        end
+    end
+    table.clear(store)
+end
+
+-- =========================
+-- TEAM HIGHLIGHT (FIXED)
+-- =========================
+local function highlightTeams(state)
+    removeHighlights(Highlights.Player)
+    if not state then return end
+
+    for _, plr in pairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer and plr.Character and plr.Team then
+            if plr.Team.Name == "Survivor" then
+                createHighlight(plr.Character, Color3.fromRGB(0,255,0), Highlights.Player)
+            elseif plr.Team.Name == "Killer" then
+                createHighlight(plr.Character, Color3.fromRGB(255,0,0), Highlights.Player)
+            end
+        end
     end
 end
 
-local function highlightCached(name, color)
-    for _,model in ipairs(ModelCache[name]) do
-        addHighlight(model, color)
+-- =========================
+-- MODEL NAME HIGHLIGHT (FIXED)
+-- =========================
+local function highlightByName(name, color, state, store)
+    removeHighlights(store)
+    if not state then return end
+
+    for _, obj in pairs(Workspace:GetDescendants()) do
+        if obj:IsA("Model") and obj.Name == name then
+            createHighlight(obj, color, store)
+        end
     end
 end
 
---==================================
--- MODEL TOGGLES
---==================================
-Tab:CreateToggle({
+-- =========================
+-- AUTO REFRESH PLAYER
+-- =========================
+Players.PlayerAdded:Connect(function()
+    task.wait(1)
+    highlightTeams(true)
+end)
+
+Players.PlayerRemoving:Connect(function()
+    highlightTeams(true)
+end)
+
+-- =========================
+-- CROSSHAIR (FIXED)
+-- =========================
+local CrosshairGui = Instance.new("ScreenGui")
+CrosshairGui.Name = "RF_Crosshair"
+CrosshairGui.ResetOnSpawn = false
+CrosshairGui.Enabled = false
+CrosshairGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+local Dot = Instance.new("Frame")
+Dot.Size = UDim2.fromOffset(6,6)
+Dot.Position = UDim2.fromScale(0.5,0.5)
+Dot.AnchorPoint = Vector2.new(0.5,0.5)
+Dot.BackgroundColor3 = Color3.new(1,1,1)
+Dot.BorderSizePixel = 0
+Dot.Parent = CrosshairGui
+
+Instance.new("UICorner", Dot).CornerRadius = UDim.new(1,0)
+
+-- =========================
+-- VISUAL TAB (ASLI, FIXED)
+-- =========================
+local VisualTab = Window:CreateTab("Visual", 4483362458)
+
+VisualTab:CreateToggle({
+    Name = "Highlight Survivor & Killer",
+    CurrentValue = false,
+    Callback = highlightTeams
+})
+
+VisualTab:CreateToggle({
     Name = "Highlight Generator",
     Callback = function(v)
-        if v then
-            highlightCached("Generator", Color3.fromRGB(255,255,0))
-        else
-            clearHighlights()
-        end
+        highlightByName("Generator", Color3.fromRGB(255,255,0), v, Highlights.Generator)
     end
 })
 
-Tab:CreateToggle({
+VisualTab:CreateToggle({
     Name = "Highlight Hook",
     Callback = function(v)
-        if v then
-            highlightCached("Hook", Color3.fromRGB(255,0,255))
-        else
-            clearHighlights()
-        end
+        highlightByName("Hook", Color3.fromRGB(255,0,255), v, Highlights.Hook)
     end
 })
 
-Tab:CreateToggle({
+VisualTab:CreateToggle({
     Name = "Highlight Window",
     Callback = function(v)
-        if v then
-            highlightCached("Window", Color3.fromRGB(0,170,255))
-        else
-            clearHighlights()
-        end
+        highlightByName("Window", Color3.fromRGB(0,170,255), v, Highlights.Window)
     end
 })
 
-Tab:CreateToggle({
-    Name = "Highlight Event (Gift)",
+VisualTab:CreateToggle({
+    Name = "Highlight Event / Gift",
     Callback = function(v)
-        if v then
-            highlightCached("Gift", Color3.fromRGB(255,140,0))
-        else
-            clearHighlights()
-        end
+        highlightByName("Gift", Color3.fromRGB(255,215,0), v, Highlights.Gift)
     end
 })
 
---==================================
--- CROSSHAIR DOT (TOGGLE)
---==================================
-local CrosshairEnabled = false
-
-local Crosshair = Drawing.new("Circle")
-Crosshair.Radius = 2
-Crosshair.Filled = true
-Crosshair.Thickness = 1
-Crosshair.Color = Color3.fromRGB(255,255,255)
-Crosshair.Visible = false
-
-Tab:CreateToggle({
-    Name = "Crosshair Dot",
-    CurrentValue = false,
+VisualTab:CreateToggle({
+    Name = "Crosshair",
     Callback = function(v)
-        CrosshairEnabled = v
-        Crosshair.Visible = v
+        CrosshairGui.Enabled = v
     end
 })
-
-RunService.RenderStepped:Connect(function()
-    if CrosshairEnabled then
-        Crosshair.Position = Vector2.new(
-            Camera.ViewportSize.X / 2,
-            Camera.ViewportSize.Y / 2
-        )
-    end
-end)
