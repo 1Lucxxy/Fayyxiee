@@ -22,8 +22,11 @@ local Window = Rayfield:CreateWindow({
     ConfigurationSaving = { Enabled = false }
 })
 
-local ESPTab    = Window:CreateTab("ESP", 4483362458)
+-- TAB ESP
+local ESPTab  = Window:CreateTab("ESP", 4483362458)
+-- TAB PLAYER
 local PlayerTab = Window:CreateTab("Player", 4483362458)
+-- TAB MISC
 local MiscTab   = Window:CreateTab("Misc", 4483362458)
 
 --==================================
@@ -51,7 +54,7 @@ local function clearHighlights()
 end
 
 --==================================
--- PLAYER ESP (TEAM BASED ✔)
+-- PLAYER ESP
 --==================================
 local PlayerESPEnabled = false
 
@@ -88,15 +91,9 @@ ESPTab:CreateToggle({
 })
 
 --==================================
--- MODEL CACHE (ANTI FPS DROP)
+-- MODEL CACHE
 --==================================
-local ModelCache = {
-    Generator = {},
-    Hook = {},
-    Window = {},
-    Gift = {}
-}
-
+local ModelCache = {Generator={}, Hook={}, Window={}, Gift={}}
 for _,v in ipairs(workspace:GetDescendants()) do
     if v:IsA("Model") and ModelCache[v.Name] then
         table.insert(ModelCache[v.Name], v)
@@ -109,17 +106,13 @@ local function highlightCached(name, color)
     end
 end
 
---==================================
 -- OBJECT ESP TOGGLES
---==================================
-ESPTab:CreateToggle({Name = "Highlight Generator", Callback = function(v) if v then highlightCached("Generator", Color3.fromRGB(255,255,0)) else clearHighlights() end end})
-ESPTab:CreateToggle({Name = "Highlight Hook", Callback = function(v) if v then highlightCached("Hook", Color3.fromRGB(255,0,255)) else clearHighlights() end end})
-ESPTab:CreateToggle({Name = "Highlight Window", Callback = function(v) if v then highlightCached("Window", Color3.fromRGB(0,170,255)) else clearHighlights() end end})
-ESPTab:CreateToggle({Name = "Highlight Event (Gift)", Callback = function(v) if v then highlightCached("Gift", Color3.fromRGB(255,140,0)) else clearHighlights() end end})
+ESPTab:CreateToggle({Name="Highlight Generator", Callback=function(v) if v then highlightCached("Generator", Color3.fromRGB(255,255,0)) else clearHighlights() end end})
+ESPTab:CreateToggle({Name="Highlight Hook", Callback=function(v) if v then highlightCached("Hook", Color3.fromRGB(255,0,255)) else clearHighlights() end end})
+ESPTab:CreateToggle({Name="Highlight Window", Callback=function(v) if v then highlightCached("Window", Color3.fromRGB(0,170,255)) else clearHighlights() end end})
+ESPTab:CreateToggle({Name="Highlight Event (Gift)", Callback=function(v) if v then highlightCached("Gift", Color3.fromRGB(255,140,0)) else clearHighlights() end end})
 
---==================================
 -- CROSSHAIR DOT
---==================================
 local CrosshairEnabled = false
 local Crosshair = Drawing.new("Circle")
 Crosshair.Radius = 2
@@ -129,8 +122,8 @@ Crosshair.Color = Color3.fromRGB(255,255,255)
 Crosshair.Visible = false
 
 ESPTab:CreateToggle({
-    Name = "Crosshair Dot",
-    Callback = function(v)
+    Name="Crosshair Dot",
+    Callback=function(v)
         CrosshairEnabled = v
         Crosshair.Visible = v
     end
@@ -138,23 +131,23 @@ ESPTab:CreateToggle({
 
 RunService.RenderStepped:Connect(function()
     if CrosshairEnabled then
-        Crosshair.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+        Crosshair.Position = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
     end
 end)
 
 --==================================
--- PLAYER TAB : WALK SPEED TOGGLE + SLIDER
+-- PLAYER TAB: WalkSpeed Toggle + Slider
 --==================================
 local WalkSpeedEnabled = false
-local WalkSpeedValue = 16 -- default
+local WalkSpeedValue = 16
 
 local WalkSpeedSlider = PlayerTab:CreateSlider({
-    Name = "WalkSpeed",
-    Range = {16, 150},
-    Increment = 1,
-    Suffix = " studs",
-    CurrentValue = WalkSpeedValue,
-    Callback = function(v)
+    Name="WalkSpeed",
+    Range={16,150},
+    Increment=1,
+    Suffix=" studs",
+    CurrentValue=WalkSpeedValue,
+    Callback=function(v)
         WalkSpeedValue = v
     end
 })
@@ -163,57 +156,53 @@ local WalkSpeedSlider = PlayerTab:CreateSlider({
 WalkSpeedSlider:SetDisabled(true)
 
 PlayerTab:CreateToggle({
-    Name = "Enable WalkSpeed",
-    CurrentValue = false,
-    Callback = function(v)
+    Name="Enable WalkSpeed",
+    CurrentValue=false,
+    Callback=function(v)
         WalkSpeedEnabled = v
         WalkSpeedSlider:SetDisabled(not v)
     end
 })
 
--- Apply WalkSpeed continuously
+-- Apply WalkSpeed
 RunService.Heartbeat:Connect(function()
     if WalkSpeedEnabled and LocalPlayer.Character then
         local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-        if hum then
-            hum.WalkSpeed = WalkSpeedValue
-        end
+        if hum then hum.WalkSpeed = WalkSpeedValue end
     end
 end)
 
 --==================================
--- MISC : CEK TEAM MAP
+-- MISC: Cek Team Map
 --==================================
 MiscTab:CreateButton({
-    Name = "Cek Team (Map)",
-    Callback = function()
+    Name="Cek Team (Map)",
+    Callback=function()
         local teams = TeamsService:GetTeams()
         local result = "Team di map ini:\n"
-        if #teams == 0 then
+        if #teams==0 then
             result = "Tidak ada TeamService di map ini"
         else
             for _,team in ipairs(teams) do
                 local count = 0
                 for _,plr in ipairs(Players:GetPlayers()) do
-                    if plr.Team == team then
-                        count += 1
-                    end
+                    if plr.Team==team then count+=1 end
                 end
-                result ..= "- " .. team.Name .. " : " .. count .. " player\n"
+                result ..= "- "..team.Name.." : "..count.." player\n"
             end
         end
-        Rayfield:Notify({Title = "Cek Team", Content = result, Duration = 8})
+        Rayfield:Notify({Title="Cek Team", Content=result, Duration=8})
         print("===== TEAM MAP CHECK =====")
         print(result)
     end
 })
 
 --==================================
--- MISC : CEK MODEL SEKITAR PLAYER (5 STUDS)
+-- MISC: Cek Model Sekitar Player (5 studs)
 --==================================
 MiscTab:CreateButton({
-    Name = "Cek Model Sekitar (5 studs)",
-    Callback = function()
+    Name="Cek Model Sekitar (5 studs)",
+    Callback=function()
         local char = LocalPlayer.Character
         local hrp = char and char:FindFirstChild("HumanoidRootPart")
         if not hrp then return end
@@ -222,16 +211,16 @@ MiscTab:CreateButton({
         for _,v in ipairs(workspace:GetDescendants()) do
             if v:IsA("Model") and v.PrimaryPart then
                 local dist = (v.PrimaryPart.Position - hrp.Position).Magnitude
-                if dist <= 5 and not found[v.Name] then
+                if dist <=5 and not found[v.Name] then
                     found[v.Name] = true
-                    result ..= "- " .. v.Name .. "\n"
+                    result ..= "- "..v.Name.."\n"
                 end
             end
         end
-        if result == "Model sekitar (5 studs):\n" then
+        if result=="Model sekitar (5 studs):\n" then
             result ..= "Tidak ada model"
         end
-        Rayfield:Notify({Title = "Cek Model Sekitar", Content = result, Duration = 8})
+        Rayfield:Notify({Title="Cek Model Sekitar", Content=result, Duration=8})
         print("===== MODEL NEAR PLAYER =====")
         print(result)
     end
