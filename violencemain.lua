@@ -15,16 +15,16 @@ local Camera = workspace.CurrentCamera
 -- WINDOW
 --==================================
 local Window = Rayfield:CreateWindow({
-    Name = "ESP Highlight (Final)",
+    Name = "ESP Highlight (Team Based)",
     LoadingTitle = "ESP System",
-    LoadingSubtitle = "FPS Optimized",
+    LoadingSubtitle = "Final & Stable",
     ConfigurationSaving = { Enabled = false }
 })
 
 local Tab = Window:CreateTab("ESP", 4483362458)
 
 --==================================
--- HIGHLIGHT SYSTEM
+-- HIGHLIGHT CORE
 --==================================
 local Highlights = {}
 
@@ -48,41 +48,31 @@ local function clearHighlights()
 end
 
 --==================================
--- PLAYER ESP (FIX WARNA)
+-- PLAYER ESP (TEAM SYSTEM ✔)
 --==================================
 local PlayerESPEnabled = false
 
-local function getKiller()
-    local killer
-    local maxHp = 0
-    for _,plr in ipairs(Players:GetPlayers()) do
-        local hum = plr.Character and plr.Character:FindFirstChild("Humanoid")
-        if hum and hum.MaxHealth > maxHp then
-            maxHp = hum.MaxHealth
-            killer = plr
-        end
-    end
-    return killer
-end
-
 local function updatePlayers()
     if not PlayerESPEnabled then return end
-    local killer = getKiller()
 
     for _,plr in ipairs(Players:GetPlayers()) do
         if plr ~= LocalPlayer
+        and plr.Team
         and plr.Character
         and plr.Character:FindFirstChild("HumanoidRootPart") then
 
-            if plr == killer then
-                addHighlight(plr.Character, Color3.fromRGB(255,0,0)) -- Killer
-            else
-                addHighlight(plr.Character, Color3.fromRGB(0,255,0)) -- Survivor
+            local teamName = string.lower(plr.Team.Name)
+
+            if teamName == "killer" then
+                addHighlight(plr.Character, Color3.fromRGB(255,0,0)) -- KILLER
+            elseif teamName == "survivor" then
+                addHighlight(plr.Character, Color3.fromRGB(0,255,0)) -- SURVIVOR
             end
         end
     end
 end
 
+-- update ringan
 task.spawn(function()
     while task.wait(1) do
         updatePlayers()
@@ -91,6 +81,7 @@ end)
 
 Tab:CreateToggle({
     Name = "Highlight Survivor & Killer",
+    CurrentValue = false,
     Callback = function(v)
         PlayerESPEnabled = v
         if not v then clearHighlights() end
@@ -107,6 +98,7 @@ local ModelCache = {
     Gift = {}
 }
 
+-- scan SEKALI
 for _,v in ipairs(workspace:GetDescendants()) do
     if v:IsA("Model") and ModelCache[v.Name] then
         table.insert(ModelCache[v.Name], v)
@@ -119,35 +111,50 @@ local function highlightCached(name, color)
     end
 end
 
+--==================================
+-- MODEL TOGGLES
+--==================================
 Tab:CreateToggle({
     Name = "Highlight Generator",
     Callback = function(v)
-        if v then highlightCached("Generator", Color3.fromRGB(255,255,0))
-        else clearHighlights() end
+        if v then
+            highlightCached("Generator", Color3.fromRGB(255,255,0))
+        else
+            clearHighlights()
+        end
     end
 })
 
 Tab:CreateToggle({
     Name = "Highlight Hook",
     Callback = function(v)
-        if v then highlightCached("Hook", Color3.fromRGB(255,0,255))
-        else clearHighlights() end
+        if v then
+            highlightCached("Hook", Color3.fromRGB(255,0,255))
+        else
+            clearHighlights()
+        end
     end
 })
 
 Tab:CreateToggle({
     Name = "Highlight Window",
     Callback = function(v)
-        if v then highlightCached("Window", Color3.fromRGB(0,170,255))
-        else clearHighlights() end
+        if v then
+            highlightCached("Window", Color3.fromRGB(0,170,255))
+        else
+            clearHighlights()
+        end
     end
 })
 
 Tab:CreateToggle({
     Name = "Highlight Event (Gift)",
     Callback = function(v)
-        if v then highlightCached("Gift", Color3.fromRGB(255,140,0))
-        else clearHighlights() end
+        if v then
+            highlightCached("Gift", Color3.fromRGB(255,140,0))
+        else
+            clearHighlights()
+        end
     end
 })
 
@@ -165,6 +172,7 @@ Crosshair.Visible = false
 
 Tab:CreateToggle({
     Name = "Crosshair Dot",
+    CurrentValue = false,
     Callback = function(v)
         CrosshairEnabled = v
         Crosshair.Visible = v
