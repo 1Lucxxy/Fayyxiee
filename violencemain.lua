@@ -1,182 +1,181 @@
--- =======================
+--==================================
+-- RAYFIELD LOAD
+--==================================
+local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
+
+--==================================
 -- SERVICES
--- =======================
+--==================================
 local Players = game:GetService("Players")
-local Workspace = game:GetService("Workspace")
+local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
 
--- =======================
--- LOAD RAYFIELD
--- =======================
-local Rayfield = loadstring(game:HttpGet(
-"https://raw.githubusercontent.com/shlexware/Rayfield/main/source"
-))()
-
+--==================================
+-- WINDOW
+--==================================
 local Window = Rayfield:CreateWindow({
-	Name = "Visual Hub",
-	LoadingTitle = "Loading Visual",
-	LoadingSubtitle = "Rayfield",
-	ConfigurationSaving = {
-		Enabled = true,
-		FolderName = "VisualHub",
-		FileName = "VisualConfig"
-	}
+    Name = "ESP Highlight (Final)",
+    LoadingTitle = "ESP System",
+    LoadingSubtitle = "FPS Optimized",
+    ConfigurationSaving = { Enabled = false }
 })
 
--- =======================
--- HIGHLIGHT STORAGE
--- =======================
-local HL = {
-	Survivor = {},
-	Killer = {},
-	Generator = {},
-	Hook = {},
-	Window = {},
-	Gift = {}
-}
+local Tab = Window:CreateTab("ESP", 4483362458)
 
--- =======================
--- HIGHLIGHT UTILS
--- =======================
-local function addHL(model, color, store)
-	if not model or model:FindFirstChild("RF_HL") then return end
+--==================================
+-- HIGHLIGHT SYSTEM
+--==================================
+local Highlights = {}
 
-	local h = Instance.new("Highlight")
-	h.Name = "RF_HL"
-	h.Adornee = model
-	h.FillColor = color
-	h.OutlineColor = Color3.new(1,1,1)
-	h.FillTransparency = 0.45
-	h.OutlineTransparency = 0
-	h.Parent = model
-
-	table.insert(store, h)
+local function addHighlight(obj, color)
+    if not obj or Highlights[obj] then return end
+    local h = Instance.new("Highlight")
+    h.Adornee = obj
+    h.FillColor = color
+    h.FillTransparency = 0.8
+    h.OutlineColor = Color3.new(0,0,0)
+    h.OutlineTransparency = 0.2
+    h.Parent = obj
+    Highlights[obj] = h
 end
 
-local function clearHL(store)
-	for _, h in pairs(store) do
-		if h and h.Parent then
-			h:Destroy()
-		end
-	end
-	table.clear(store)
+local function clearHighlights()
+    for _,h in pairs(Highlights) do
+        if h then h:Destroy() end
+    end
+    table.clear(Highlights)
 end
 
--- =======================
--- TEAM HIGHLIGHT
--- =======================
-local SurvivorOn = false
-local KillerOn = false
+--==================================
+-- PLAYER ESP (FIX WARNA)
+--==================================
+local PlayerESPEnabled = false
 
-local function refreshPlayers()
-	clearHL(HL.Survivor)
-	clearHL(HL.Killer)
-
-	for _, plr in pairs(Players:GetPlayers()) do
-		if plr ~= LocalPlayer and plr.Character and plr.Team then
-			if SurvivorOn and plr.Team.Name == "Survivor" then
-				addHL(plr.Character, Color3.fromRGB(0,255,0), HL.Survivor)
-			end
-			if KillerOn and plr.Team.Name == "Killer" then
-				addHL(plr.Character, Color3.fromRGB(255,0,0), HL.Killer)
-			end
-		end
-	end
+local function getKiller()
+    local killer
+    local maxHp = 0
+    for _,plr in ipairs(Players:GetPlayers()) do
+        local hum = plr.Character and plr.Character:FindFirstChild("Humanoid")
+        if hum and hum.MaxHealth > maxHp then
+            maxHp = hum.MaxHealth
+            killer = plr
+        end
+    end
+    return killer
 end
 
-Players.PlayerAdded:Connect(function()
-	task.wait(1)
-	refreshPlayers()
+local function updatePlayers()
+    if not PlayerESPEnabled then return end
+    local killer = getKiller()
+
+    for _,plr in ipairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer
+        and plr.Character
+        and plr.Character:FindFirstChild("HumanoidRootPart") then
+
+            if plr == killer then
+                addHighlight(plr.Character, Color3.fromRGB(255,0,0)) -- Killer
+            else
+                addHighlight(plr.Character, Color3.fromRGB(0,255,0)) -- Survivor
+            end
+        end
+    end
+end
+
+task.spawn(function()
+    while task.wait(1) do
+        updatePlayers()
+    end
 end)
 
-Players.PlayerRemoving:Connect(refreshPlayers)
+Tab:CreateToggle({
+    Name = "Highlight Survivor & Killer",
+    Callback = function(v)
+        PlayerESPEnabled = v
+        if not v then clearHighlights() end
+    end
+})
 
--- =======================
--- MODEL NAME HIGHLIGHT
--- =======================
-local function highlightModel(name, color, state, store)
-	clearHL(store)
-	if not state then return end
+--==================================
+-- MODEL CACHE (ANTI FPS DROP)
+--==================================
+local ModelCache = {
+    Generator = {},
+    Hook = {},
+    Window = {},
+    Gift = {}
+}
 
-	for _, obj in pairs(Workspace:GetDescendants()) do
-		if obj:IsA("Model") and obj.Name == name then
-			addHL(obj, color, store)
-		end
-	end
+for _,v in ipairs(workspace:GetDescendants()) do
+    if v:IsA("Model") and ModelCache[v.Name] then
+        table.insert(ModelCache[v.Name], v)
+    end
 end
 
--- =======================
--- CROSSHAIR
--- =======================
-local CrossGui = Instance.new("ScreenGui")
-CrossGui.Name = "RF_Crosshair"
-CrossGui.ResetOnSpawn = false
-CrossGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+local function highlightCached(name, color)
+    for _,model in ipairs(ModelCache[name]) do
+        addHighlight(model, color)
+    end
+end
 
-local Dot = Instance.new("Frame")
-Dot.Size = UDim2.fromOffset(6,6)
-Dot.Position = UDim2.fromScale(0.5,0.5)
-Dot.AnchorPoint = Vector2.new(0.5,0.5)
-Dot.BackgroundColor3 = Color3.new(1,1,1)
-Dot.BorderSizePixel = 0
-Dot.Parent = CrossGui
-
-Instance.new("UICorner", Dot).CornerRadius = UDim.new(1,0)
-
-CrossGui.Enabled = false
-
--- =======================
--- VISUAL TAB
--- =======================
-local VisualTab = Window:CreateTab("Visual", 4483362458)
-
-VisualTab:CreateToggle({
-	Name = "Highlight Survivor (Green)",
-	Callback = function(v)
-		SurvivorOn = v
-		refreshPlayers()
-	end
+Tab:CreateToggle({
+    Name = "Highlight Generator",
+    Callback = function(v)
+        if v then highlightCached("Generator", Color3.fromRGB(255,255,0))
+        else clearHighlights() end
+    end
 })
 
-VisualTab:CreateToggle({
-	Name = "Highlight Killer (Red)",
-	Callback = function(v)
-		KillerOn = v
-		refreshPlayers()
-	end
+Tab:CreateToggle({
+    Name = "Highlight Hook",
+    Callback = function(v)
+        if v then highlightCached("Hook", Color3.fromRGB(255,0,255))
+        else clearHighlights() end
+    end
 })
 
-VisualTab:CreateToggle({
-	Name = "Highlight Generator",
-	Callback = function(v)
-		highlightModel("Generator", Color3.fromRGB(255,255,0), v, HL.Generator)
-	end
+Tab:CreateToggle({
+    Name = "Highlight Window",
+    Callback = function(v)
+        if v then highlightCached("Window", Color3.fromRGB(0,170,255))
+        else clearHighlights() end
+    end
 })
 
-VisualTab:CreateToggle({
-	Name = "Highlight Hook",
-	Callback = function(v)
-		highlightModel("Hook", Color3.fromRGB(255,0,255), v, HL.Hook)
-	end
+Tab:CreateToggle({
+    Name = "Highlight Event (Gift)",
+    Callback = function(v)
+        if v then highlightCached("Gift", Color3.fromRGB(255,140,0))
+        else clearHighlights() end
+    end
 })
 
-VisualTab:CreateToggle({
-	Name = "Highlight Window",
-	Callback = function(v)
-		highlightModel("Window", Color3.fromRGB(0,170,255), v, HL.Window)
-	end
+--==================================
+-- CROSSHAIR DOT (TOGGLE)
+--==================================
+local CrosshairEnabled = false
+
+local Crosshair = Drawing.new("Circle")
+Crosshair.Radius = 2
+Crosshair.Filled = true
+Crosshair.Thickness = 1
+Crosshair.Color = Color3.fromRGB(255,255,255)
+Crosshair.Visible = false
+
+Tab:CreateToggle({
+    Name = "Crosshair Dot",
+    Callback = function(v)
+        CrosshairEnabled = v
+        Crosshair.Visible = v
+    end
 })
 
-VisualTab:CreateToggle({
-	Name = "Highlight Event / Gift",
-	Callback = function(v)
-		highlightModel("Gift", Color3.fromRGB(255,215,0), v, HL.Gift)
-	end
-})
-
-VisualTab:CreateToggle({
-	Name = "Crosshair (Small Dot)",
-	Callback = function(v)
-		CrossGui.Enabled = v
-	end
-})
+RunService.RenderStepped:Connect(function()
+    if CrosshairEnabled then
+        Crosshair.Position = Vector2.new(
+            Camera.ViewportSize.X / 2,
+            Camera.ViewportSize.Y / 2
+        )
+    end
+end)
