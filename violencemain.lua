@@ -22,8 +22,9 @@ local Window = Rayfield:CreateWindow({
     ConfigurationSaving = { Enabled = false }
 })
 
-local ESPTab  = Window:CreateTab("ESP", 4483362458)
-local MiscTab = Window:CreateTab("Misc", 4483362458)
+local ESPTab    = Window:CreateTab("ESP", 4483362458)
+local PlayerTab = Window:CreateTab("Player", 4483362458)
+local MiscTab   = Window:CreateTab("Misc", 4483362458)
 
 --==================================
 -- HIGHLIGHT CORE (OUTLINE OFF TOTAL ✔)
@@ -36,8 +37,8 @@ local function addHighlight(obj, color)
     h.Adornee = obj
     h.FillColor = color
     h.FillTransparency = 0.8
-    h.OutlineColor = color   -- FIX TOTAL
-    h.OutlineTransparency = 1 -- FIX TOTAL
+    h.OutlineColor = color
+    h.OutlineTransparency = 1
     h.Parent = obj
     Highlights[obj] = h
 end
@@ -56,15 +57,12 @@ local PlayerESPEnabled = false
 
 local function updatePlayers()
     if not PlayerESPEnabled then return end
-
     for _,plr in ipairs(Players:GetPlayers()) do
         if plr ~= LocalPlayer
         and plr.Team
         and plr.Character
         and plr.Character:FindFirstChild("HumanoidRootPart") then
-
             local teamName = string.lower(plr.Team.Name)
-
             if teamName == "killer" then
                 addHighlight(plr.Character, Color3.fromRGB(255,0,0))
             elseif teamName == "survivors" then
@@ -114,43 +112,15 @@ end
 --==================================
 -- OBJECT ESP TOGGLES
 --==================================
-ESPTab:CreateToggle({
-    Name = "Highlight Generator",
-    Callback = function(v)
-        if v then highlightCached("Generator", Color3.fromRGB(255,255,0))
-        else clearHighlights() end
-    end
-})
-
-ESPTab:CreateToggle({
-    Name = "Highlight Hook",
-    Callback = function(v)
-        if v then highlightCached("Hook", Color3.fromRGB(255,0,255))
-        else clearHighlights() end
-    end
-})
-
-ESPTab:CreateToggle({
-    Name = "Highlight Window",
-    Callback = function(v)
-        if v then highlightCached("Window", Color3.fromRGB(0,170,255))
-        else clearHighlights() end
-    end
-})
-
-ESPTab:CreateToggle({
-    Name = "Highlight Event (Gift)",
-    Callback = function(v)
-        if v then highlightCached("Gift", Color3.fromRGB(255,140,0))
-        else clearHighlights() end
-    end
-})
+ESPTab:CreateToggle({Name = "Highlight Generator", Callback = function(v) if v then highlightCached("Generator", Color3.fromRGB(255,255,0)) else clearHighlights() end end})
+ESPTab:CreateToggle({Name = "Highlight Hook", Callback = function(v) if v then highlightCached("Hook", Color3.fromRGB(255,0,255)) else clearHighlights() end end})
+ESPTab:CreateToggle({Name = "Highlight Window", Callback = function(v) if v then highlightCached("Window", Color3.fromRGB(0,170,255)) else clearHighlights() end end})
+ESPTab:CreateToggle({Name = "Highlight Event (Gift)", Callback = function(v) if v then highlightCached("Gift", Color3.fromRGB(255,140,0)) else clearHighlights() end end})
 
 --==================================
 -- CROSSHAIR DOT
 --==================================
 local CrosshairEnabled = false
-
 local Crosshair = Drawing.new("Circle")
 Crosshair.Radius = 2
 Crosshair.Filled = true
@@ -168,10 +138,46 @@ ESPTab:CreateToggle({
 
 RunService.RenderStepped:Connect(function()
     if CrosshairEnabled then
-        Crosshair.Position = Vector2.new(
-            Camera.ViewportSize.X / 2,
-            Camera.ViewportSize.Y / 2
-        )
+        Crosshair.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+    end
+end)
+
+--==================================
+-- PLAYER TAB : WALK SPEED TOGGLE + SLIDER
+--==================================
+local WalkSpeedEnabled = false
+local WalkSpeedValue = 16 -- default
+
+local WalkSpeedSlider = PlayerTab:CreateSlider({
+    Name = "WalkSpeed",
+    Range = {16, 150},
+    Increment = 1,
+    Suffix = " studs",
+    CurrentValue = WalkSpeedValue,
+    Callback = function(v)
+        WalkSpeedValue = v
+    end
+})
+
+-- Disable slider initially
+WalkSpeedSlider:SetDisabled(true)
+
+PlayerTab:CreateToggle({
+    Name = "Enable WalkSpeed",
+    CurrentValue = false,
+    Callback = function(v)
+        WalkSpeedEnabled = v
+        WalkSpeedSlider:SetDisabled(not v)
+    end
+})
+
+-- Apply WalkSpeed continuously
+RunService.Heartbeat:Connect(function()
+    if WalkSpeedEnabled and LocalPlayer.Character then
+        local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if hum then
+            hum.WalkSpeed = WalkSpeedValue
+        end
     end
 end)
 
@@ -183,7 +189,6 @@ MiscTab:CreateButton({
     Callback = function()
         local teams = TeamsService:GetTeams()
         local result = "Team di map ini:\n"
-
         if #teams == 0 then
             result = "Tidak ada TeamService di map ini"
         else
@@ -197,13 +202,7 @@ MiscTab:CreateButton({
                 result ..= "- " .. team.Name .. " : " .. count .. " player\n"
             end
         end
-
-        Rayfield:Notify({
-            Title = "Cek Team",
-            Content = result,
-            Duration = 8
-        })
-
+        Rayfield:Notify({Title = "Cek Team", Content = result, Duration = 8})
         print("===== TEAM MAP CHECK =====")
         print(result)
     end
@@ -218,32 +217,21 @@ MiscTab:CreateButton({
         local char = LocalPlayer.Character
         local hrp = char and char:FindFirstChild("HumanoidRootPart")
         if not hrp then return end
-
         local found = {}
         local result = "Model sekitar (5 studs):\n"
-
         for _,v in ipairs(workspace:GetDescendants()) do
             if v:IsA("Model") and v.PrimaryPart then
                 local dist = (v.PrimaryPart.Position - hrp.Position).Magnitude
-                if dist <= 5 then
-                    if not found[v.Name] then
-                        found[v.Name] = true
-                        result ..= "- " .. v.Name .. "\n"
-                    end
+                if dist <= 5 and not found[v.Name] then
+                    found[v.Name] = true
+                    result ..= "- " .. v.Name .. "\n"
                 end
             end
         end
-
         if result == "Model sekitar (5 studs):\n" then
             result ..= "Tidak ada model"
         end
-
-        Rayfield:Notify({
-            Title = "Cek Model Sekitar",
-            Content = result,
-            Duration = 8
-        })
-
+        Rayfield:Notify({Title = "Cek Model Sekitar", Content = result, Duration = 8})
         print("===== MODEL NEAR PLAYER =====")
         print(result)
     end
