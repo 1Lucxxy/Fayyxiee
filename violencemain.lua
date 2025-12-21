@@ -169,7 +169,7 @@ end)
 -- PLAYER : WALKSPEED TOGGLE
 --==================================================
 local WalkSpeedEnabled = false
-local SpeedValue = 32
+local SpeedValue = 64
 
 local function applySpeed(char)
     local hum = char and char:FindFirstChildOfClass("Humanoid")
