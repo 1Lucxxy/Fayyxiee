@@ -1,5 +1,5 @@
 --==================================================
--- RAYFIELD UI
+-- RAYFIELD
 --==================================================
 local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
 
@@ -16,10 +16,10 @@ local Camera = workspace.CurrentCamera
 -- WINDOW & TABS
 --==================================================
 local Window = Rayfield:CreateWindow({
-    Name = "ESP + Player + Misc",
+    Name = "ESP FINAL (FIXED)",
     LoadingTitle = "Loading",
-    LoadingSubtitle = "Stable Version",
-    ConfigurationSaving = { Enabled = false }
+    LoadingSubtitle = "No FPS Drop",
+    ConfigurationSaving = {Enabled=false}
 })
 
 local ESPTab    = Window:CreateTab("ESP", 4483362458)
@@ -27,114 +27,140 @@ local PlayerTab = Window:CreateTab("Player", 4483362458)
 local MiscTab   = Window:CreateTab("Misc", 4483362458)
 
 --==================================================
--- HIGHLIGHT CORE (FULL COLOR)
---==================================================
-local Highlights = {}
-
-local function addHighlight(obj, color)
-    if not obj or Highlights[obj] then return end
-    local h = Instance.new("Highlight")
-    h.Adornee = obj
-    h.FillColor = color
-    h.FillTransparency = 0.8
-    h.OutlineTransparency = 1
-    h.Parent = obj
-    Highlights[obj] = h
-end
-
-local function clearHighlights()
-    for _,h in pairs(Highlights) do
-        if h then h:Destroy() end
-    end
-    table.clear(Highlights)
-end
-
---==================================================
--- PLAYER ESP (TEAM)
+-- PLAYER ESP (EVENT BASED)
 --==================================================
 local PlayerESPEnabled = false
+local PlayerHighlights = {}
 
-local function updatePlayers()
-    if not PlayerESPEnabled then return end
-    for _,plr in ipairs(Players:GetPlayers()) do
-        if plr ~= LocalPlayer
-        and plr.Team
-        and plr.Character
-        and plr.Character:FindFirstChild("HumanoidRootPart") then
-
-            local teamName = string.lower(plr.Team.Name)
-            if teamName == "killer" then
-                addHighlight(plr.Character, Color3.fromRGB(255,0,0))
-            elseif teamName == "survivors" then
-                addHighlight(plr.Character, Color3.fromRGB(0,255,0))
-            end
-        end
+local function clearPlayerESP()
+    for _,h in pairs(PlayerHighlights) do
+        if h then h:Destroy() end
     end
+    table.clear(PlayerHighlights)
 end
 
-task.spawn(function()
-    while task.wait(1) do updatePlayers() end
-end)
+local function applyPlayerESP(plr)
+    if plr == LocalPlayer then return end
+
+    plr.CharacterAdded:Connect(function(char)
+        task.wait(0.3)
+        if not PlayerESPEnabled or not plr.Team then return end
+
+        local h = Instance.new("Highlight")
+        h.Adornee = char
+        h.FillTransparency = 0.8
+        h.OutlineTransparency = 1
+
+        if string.lower(plr.Team.Name) == "killer" then
+            h.FillColor = Color3.fromRGB(255,0,0)
+        elseif string.lower(plr.Team.Name) == "survivors" then
+            h.FillColor = Color3.fromRGB(0,255,0)
+        else
+            return
+        end
+
+        h.Parent = char
+        PlayerHighlights[plr] = h
+    end)
+end
+
+for _,p in ipairs(Players:GetPlayers()) do
+    applyPlayerESP(p)
+end
+Players.PlayerAdded:Connect(applyPlayerESP)
 
 ESPTab:CreateToggle({
     Name = "ESP Survivor & Killer",
     Callback = function(v)
         PlayerESPEnabled = v
-        if not v then clearHighlights() end
+        if not v then clearPlayerESP() end
     end
 })
 
 --==================================================
--- OBJECT ESP (CACHE)
+-- OBJECT ESP (FIXED TOTAL)
 --==================================================
-local ModelCache = { Generator={}, Hook={}, Window={}, Gift={} }
+local ObjectESP = {
+    Generator = {Color=Color3.fromRGB(255,255,0), Items={}},
+    Hook      = {Color=Color3.fromRGB(255,0,255), Items={}},
+    Window    = {Color=Color3.fromRGB(0,170,255), Items={}},
+    Gift      = {Color=Color3.fromRGB(255,165,0), Items={}}
+}
 
-for _,v in ipairs(workspace:GetDescendants()) do
-    if v:IsA("Model") and ModelCache[v.Name] then
-        table.insert(ModelCache[v.Name], v)
+local function clearObjectESP(name)
+    for _,h in ipairs(ObjectESP[name].Items) do
+        if h then h:Destroy() end
+    end
+    ObjectESP[name].Items = {}
+end
+
+local function scanObjectESP(name)
+    clearObjectESP(name)
+
+    for _,v in ipairs(workspace:GetDescendants()) do
+        if (v:IsA("Model") or v:IsA("MeshPart")) and v.Name == name then
+            local h = Instance.new("Highlight")
+            h.Adornee = v
+            h.FillColor = ObjectESP[name].Color
+            h.FillTransparency = 0.8
+            h.OutlineTransparency = 1
+            h.Parent = v
+            table.insert(ObjectESP[name].Items, h)
+        end
     end
 end
 
-local function highlightCached(name, color)
-    for _,m in ipairs(ModelCache[name]) do addHighlight(m, color) end
-end
+ESPTab:CreateToggle({
+    Name = "Generator",
+    Callback = function(v)
+        if v then scanObjectESP("Generator") else clearObjectESP("Generator") end
+    end
+})
 
-ESPTab:CreateToggle({ Name="Generator ESP", Callback=function(v)
-    if v then highlightCached("Generator", Color3.fromRGB(255,255,0)) else clearHighlights() end
-end})
-ESPTab:CreateToggle({ Name="Hook ESP", Callback=function(v)
-    if v then highlightCached("Hook", Color3.fromRGB(255,0,255)) else clearHighlights() end
-end})
-ESPTab:CreateToggle({ Name="Window ESP", Callback=function(v)
-    if v then highlightCached("Window", Color3.fromRGB(0,170,255)) else clearHighlights() end
-end})
-ESPTab:CreateToggle({ Name="Event / Gift ESP", Callback=function(v)
-    if v then highlightCached("Gift", Color3.fromRGB(255,165,0)) else clearHighlights() end
-end})
+ESPTab:CreateToggle({
+    Name = "Hook",
+    Callback = function(v)
+        if v then scanObjectESP("Hook") else clearObjectESP("Hook") end
+    end
+})
+
+ESPTab:CreateToggle({
+    Name = "Window",
+    Callback = function(v)
+        if v then scanObjectESP("Window") else clearObjectESP("Window") end
+    end
+})
+
+ESPTab:CreateToggle({
+    Name = "Event / Gift",
+    Callback = function(v)
+        if v then scanObjectESP("Gift") else clearObjectESP("Gift") end
+    end
+})
 
 --==================================================
--- CROSSHAIR DOT
+-- CROSSHAIR
 --==================================================
-local CrosshairEnabled = false
 local Crosshair = Drawing.new("Circle")
 Crosshair.Radius = 2
 Crosshair.Filled = true
 Crosshair.Color = Color3.fromRGB(255,255,255)
 Crosshair.Visible = false
+local CrosshairEnabled = false
 
 ESPTab:CreateToggle({
-    Name = "Crosshair Dot",
-    Callback = function(v)
-        CrosshairEnabled = v
-        Crosshair.Visible = v
+    Name="Crosshair Dot",
+    Callback=function(v)
+        CrosshairEnabled=v
+        Crosshair.Visible=v
     end
 })
 
 RunService.RenderStepped:Connect(function()
     if CrosshairEnabled then
         Crosshair.Position = Vector2.new(
-            Camera.ViewportSize.X / 2,
-            Camera.ViewportSize.Y / 2
+            Camera.ViewportSize.X/2,
+            Camera.ViewportSize.Y/2
         )
     end
 end)
@@ -143,66 +169,74 @@ end)
 -- PLAYER : WALKSPEED TOGGLE
 --==================================================
 local WalkSpeedEnabled = false
-local CustomWalkSpeed = 32 -- kamu bisa ganti nilainya
+local SpeedValue = 32
 
-local function applyWalkSpeed(char)
+local function applySpeed(char)
     local hum = char and char:FindFirstChildOfClass("Humanoid")
-    if not hum then return end
-    hum.WalkSpeed = WalkSpeedEnabled and CustomWalkSpeed or 16
+    if hum then
+        hum.WalkSpeed = WalkSpeedEnabled and SpeedValue or 16
+    end
 end
 
 PlayerTab:CreateToggle({
-    Name = "WalkSpeed",
-    Callback = function(v)
-        WalkSpeedEnabled = v
-        applyWalkSpeed(LocalPlayer.Character)
+    Name="WalkSpeed",
+    Callback=function(v)
+        WalkSpeedEnabled=v
+        applySpeed(LocalPlayer.Character)
     end
 })
 
 LocalPlayer.CharacterAdded:Connect(function(char)
-    task.wait(0.5)
-    applyWalkSpeed(char)
+    task.wait(0.3)
+    applySpeed(char)
 end)
 
 --==================================================
--- MISC : NOCLIP TOGGLE
+-- NOCLIP (NO LOOP)
 --==================================================
 local NoclipEnabled = false
+local CachedParts = {}
 
-MiscTab:CreateToggle({
-    Name = "Noclip",
-    Callback = function(v)
-        NoclipEnabled = v
-    end
-})
-
-RunService.Stepped:Connect(function()
-    if not NoclipEnabled then return end
-    local char = LocalPlayer.Character
-    if not char then return end
-    for _,part in ipairs(char:GetDescendants()) do
-        if part:IsA("BasePart") then
-            part.CanCollide = false
+local function cacheParts(char)
+    CachedParts = {}
+    for _,v in ipairs(char:GetDescendants()) do
+        if v:IsA("BasePart") then
+            table.insert(CachedParts, v)
         end
     end
+end
+
+LocalPlayer.CharacterAdded:Connect(function(char)
+    task.wait(0.3)
+    cacheParts(char)
 end)
+
+MiscTab:CreateToggle({
+    Name="Noclip",
+    Callback=function(v)
+        NoclipEnabled=v
+        for _,p in ipairs(CachedParts) do
+            p.CanCollide = not v
+        end
+    end
+})
 
 --==================================================
 -- MISC : CEK TEAM MAP
 --==================================================
 MiscTab:CreateButton({
-    Name = "Cek Team di Map",
-    Callback = function()
-        local text = "Team di map:\n"
-        for _,team in ipairs(TeamsService:GetTeams()) do
-            local count = 0
-            for _,plr in ipairs(Players:GetPlayers()) do
-                if plr.Team == team then count += 1 end
+    Name="Cek Team di Map",
+    Callback=function()
+        local txt="Team di map:\n"
+        for _,t in ipairs(TeamsService:GetTeams()) do
+            local c=0
+            for _,p in ipairs(Players:GetPlayers()) do
+                if p.Team==t then c+=1 end
             end
-            text ..= "- "..team.Name.." : "..count.." player\n"
+            txt..="- "..t.Name.." : "..c.." player\n"
         end
-        Rayfield:Notify({Title="Info Team",Content=text,Duration=8})
-        print(text)
+        Rayfield:Notify({Title="Team Info",Content=txt,Duration=8})
+        print(txt)
     end
 })
 
@@ -210,27 +244,20 @@ MiscTab:CreateButton({
 -- MISC : CEK MODEL SEKITAR (5 STUDS)
 --==================================================
 MiscTab:CreateButton({
-    Name = "Cek Model Sekitar (5 studs)",
-    Callback = function()
-        local char = LocalPlayer.Character
-        local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    Name="Cek Model Sekitar",
+    Callback=function()
+        local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
         if not hrp then return end
-
-        local found = {}
-        local text = "Model sekitar:\n"
-
-        for _,v in ipairs(workspace:GetDescendants()) do
+        local found,txt={}, "Model sekitar:\n"
+        for _,v in ipairs(workspace:GetChildren()) do
             if v:IsA("Model") and v.PrimaryPart then
-                if (v.PrimaryPart.Position - hrp.Position).Magnitude <= 5 then
-                    if not found[v.Name] then
-                        found[v.Name] = true
-                        text ..= "- "..v.Name.."\n"
-                    end
+                if (v.PrimaryPart.Position-hrp.Position).Magnitude<=5 and not found[v.Name] then
+                    found[v.Name]=true
+                    txt..="- "..v.Name.."\n"
                 end
             end
         end
-
-        Rayfield:Notify({Title="Model Nearby",Content=text,Duration=8})
-        print(text)
+        Rayfield:Notify({Title="Nearby",Content=txt,Duration=8})
+        print(txt)
     end
 })
