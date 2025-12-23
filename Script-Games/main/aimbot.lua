@@ -217,3 +217,181 @@ VisualTab:CreateButton({
         end
     end
 })
+
+-- ================= COMBAT TAB =================
+local CombatTab = Window:CreateTab("Combat", 4483362458)
+
+local Camera = workspace.CurrentCamera
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+
+-- SETTINGS COMBAT
+local Combat = {
+    Dot = false,
+    Hitbox = false,
+    HitboxSize = 6,
+    AimHead = false,
+    AimBody = false,
+    POV = false,
+    POVRadius = 120
+}
+
+-- ================= DOT CROSSHAIR =================
+local DotGui = Instance.new("ScreenGui", CoreGui)
+DotGui.Name = "DotCrosshair"
+DotGui.Enabled = false
+
+local Dot = Instance.new("Frame", DotGui)
+Dot.Size = UDim2.fromOffset(4,4)
+Dot.Position = UDim2.fromScale(0.5,0.5)
+Dot.AnchorPoint = Vector2.new(0.5,0.5)
+Dot.BackgroundColor3 = Color3.new(1,1,1)
+Dot.BorderSizePixel = 0
+Dot.BackgroundTransparency = 0
+
+-- ================= HITBOX =================
+local HitboxCache = {}
+
+local function ApplyHitbox(p)
+    if not Combat.Hitbox then return end
+    if p == LocalPlayer then return end
+    if not IsEnemy(p) then return end
+    if not p.Character then return end
+
+    local hrp = p.Character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+
+    hrp.Size = Vector3.new(
+        Combat.HitboxSize,
+        Combat.HitboxSize,
+        Combat.HitboxSize
+    )
+    hrp.CanCollide = false
+    hrp.Transparency = 0.6
+
+    HitboxCache[p] = hrp
+end
+
+local function ClearHitbox()
+    for _,hrp in pairs(HitboxCache) do
+        if hrp then
+            hrp.Size = Vector3.new(2,2,1)
+            hrp.Transparency = 1
+        end
+    end
+    HitboxCache = {}
+end
+
+-- ================= AIM ASSIST =================
+local function GetClosestTarget()
+    local closest, shortest = nil, Combat.POVRadius
+
+    for _,p in pairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer and IsEnemy(p) and p.Character then
+            local part =
+                Combat.AimHead and p.Character:FindFirstChild("Head")
+                or Combat.AimBody and p.Character:FindFirstChild("HumanoidRootPart")
+
+            if part then
+                local screenPos, onScreen = Camera:WorldToViewportPoint(part.Position)
+                if onScreen then
+                    local dist = (Vector2.new(screenPos.X, screenPos.Y)
+                        - Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)).Magnitude
+
+                    if dist < shortest then
+                        shortest = dist
+                        closest = part
+                    end
+                end
+            end
+        end
+    end
+
+    return closest
+end
+
+RunService.RenderStepped:Connect(function()
+    if not (Combat.AimHead or Combat.AimBody) then return end
+    if Combat.POV and Combat.POVRadius <= 0 then return end
+
+    local target = GetClosestTarget()
+    if target then
+        Camera.CFrame = Camera.CFrame:Lerp(
+            CFrame.new(Camera.CFrame.Position, target.Position),
+            0.15
+        )
+    end
+end)
+
+-- ================= UI COMBAT =================
+CombatTab:CreateToggle({
+    Name = "Dot Crosshair",
+    Callback = function(v)
+        Combat.Dot = v
+        DotGui.Enabled = v
+    end
+})
+
+CombatTab:CreateToggle({
+    Name = "Hitbox Expander",
+    Callback = function(v)
+        Combat.Hitbox = v
+        if not v then
+            ClearHitbox()
+        else
+            for _,p in pairs(Players:GetPlayers()) do
+                ApplyHitbox(p)
+            end
+        end
+    end
+})
+
+CombatTab:CreateSlider({
+    Name = "Hitbox Size",
+    Range = {2, 10},
+    Increment = 1,
+    CurrentValue = 6,
+    Callback = function(v)
+        Combat.HitboxSize = v
+        if Combat.Hitbox then
+            ClearHitbox()
+            for _,p in pairs(Players:GetPlayers()) do
+                ApplyHitbox(p)
+            end
+        end
+    end
+})
+
+CombatTab:CreateToggle({
+    Name = "Aim Head",
+    Callback = function(v)
+        Combat.AimHead = v
+        if v then Combat.AimBody = false end
+    end
+})
+
+CombatTab:CreateToggle({
+    Name = "Aim Body",
+    Callback = function(v)
+        Combat.AimBody = v
+        if v then Combat.AimHead = false end
+    end
+})
+
+CombatTab:CreateToggle({
+    Name = "Enable POV",
+    Callback = function(v)
+        Combat.POV = v
+    end
+})
+
+CombatTab:CreateSlider({
+    Name = "POV Radius",
+    Range = {50, 300},
+    Increment = 10,
+    CurrentValue = 120,
+    Callback = function(v)
+        Combat.POVRadius = v
+    end
+})
+
