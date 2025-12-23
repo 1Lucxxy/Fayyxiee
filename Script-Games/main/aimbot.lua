@@ -222,85 +222,207 @@ VisualTab:CreateButton({
 })
 
 -- ================= COMBAT TAB =================
+
+local RunService = game:GetService("RunService")
+local Camera = workspace.CurrentCamera
+
 local CombatTab = Window:CreateTab("Combat", 4483362458)
 
 local Combat = {
+    Dot = false,
     AimHead = false,
     AimBody = false,
     POV = false,
-    ShowCircle = false,
     Radius = 150,
-    Priority = "Crosshair",
-    Smooth = 0.15,
-    TeamCheck = false
+    Smooth = 0.18,
+    Hitbox = false,
+    HitboxSize = 5,
+    TeamCheck = true,
+    Priority = "Crosshair"
 }
 
+-- ================= DOT CROSSHAIR =================
+
+local Dot
+task.delay(1, function()
+    pcall(function()
+        Dot = Drawing.new("Circle")
+        Dot.Filled = true
+        Dot.Radius = 2
+        Dot.Color = Color3.fromRGB(255,255,255)
+        Dot.Visible = false
+        Dot.Transparency = 1
+    end)
+end)
+
 -- ================= POV CIRCLE =================
-local Circle = Drawing.new("Circle")
-Circle.Visible = false
-Circle.Filled = false
-Circle.Thickness = 1
-Circle.NumSides = 64
-Circle.Color = Color3.fromRGB(255,255,255)
-Circle.Transparency = 1
 
--- ================= TEAM CHECK =================
-local function IsValidTarget(plr)
-    if plr == LocalPlayer then return false end
-    if Combat.TeamCheck and plr.Team == LocalPlayer.Team then return false end
-    return true
-end
+local POVCircle
+task.delay(1, function()
+    pcall(function()
+        POVCircle = Drawing.new("Circle")
+        POVCircle.Filled = false
+        POVCircle.Thickness = 1
+        POVCircle.NumSides = 64
+        POVCircle.Color = Color3.fromRGB(255,255,255)
+        POVCircle.Visible = false
+        POVCircle.Transparency = 1
+    end)
+end)
 
--- ================= GET TARGET =================
+-- ================= TARGET FIND =================
+
 local function GetTarget()
-    local best, bestVal = nil, math.huge
+    local closest, dist = nil, math.huge
     local center = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
 
-    for _,plr in ipairs(Players:GetPlayers()) do
-        if IsValidTarget(plr) and plr.Character then
-            local hum = plr.Character:FindFirstChildOfClass("Humanoid")
-            local part =
-                Combat.AimHead and plr.Character:FindFirstChild("Head") or
-                Combat.AimBody and plr.Character:FindFirstChild("HumanoidRootPart")
-
+    for _,p in pairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer and p.Character then
+            local hum = p.Character:FindFirstChildOfClass("Humanoid")
+            local part = p.Character:FindFirstChild(Combat.AimHead and "Head" or "HumanoidRootPart")
             if hum and part and hum.Health > 0 then
-                local pos, vis = Camera:WorldToViewportPoint(part.Position)
-                if vis then
-                    local dist = (Vector2.new(pos.X,pos.Y) - center).Magnitude
-                    if not Combat.POV or dist <= Combat.Radius then
-                        local val = Combat.Priority == "Crosshair" and dist
-                            or Combat.Priority == "Distance" and
-                            (part.Position - Camera.CFrame.Position).Magnitude
-                            or hum.Health
+                if Combat.TeamCheck and p.Team == LocalPlayer.Team then continue end
 
-                        if val < bestVal then
-                            bestVal = val
-                            best = part
+                local pos, onscreen = Camera:WorldToViewportPoint(part.Position)
+                if onscreen then
+                    local mag = (Vector2.new(pos.X,pos.Y) - center).Magnitude
+                    if not Combat.POV or mag <= Combat.Radius then
+                        if mag < dist then
+                            dist = mag
+                            closest = part
                         end
                     end
                 end
             end
         end
     end
-
-    return best
+    return closest
 end
 
 -- ================= AIM LOOP =================
+
 RunService.RenderStepped:Connect(function()
-    if not (Combat.AimHead or Combat.AimBody) then return end
-    local target = GetTarget()
-    if target then
-        Camera.CFrame = Camera.CFrame:Lerp(
-            CFrame.new(Camera.CFrame.Position, target.Position),
-            Combat.Smooth
-        )
+    local center = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
+
+    if Dot then
+        Dot.Position = center
+        Dot.Visible = Combat.Dot
+    end
+
+    if POVCircle then
+        POVCircle.Position = center
+        POVCircle.Radius = Combat.Radius
+        POVCircle.Visible = Combat.POV
+    end
+
+    if Combat.AimHead or Combat.AimBody then
+        local target = GetTarget()
+        if target then
+            local cf = Camera.CFrame
+            Camera.CFrame = cf:Lerp(
+                CFrame.new(cf.Position, target.Position),
+                Combat.Smooth
+            )
+        end
     end
 end)
 
--- ================= POV UPDATE =================
-RunService.RenderStepped:Connect(function()
-    Circle.Position = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
-    Circle.Radius = Combat.Radius
-    Circle.Visible = Combat.ShowCircle and Combat.POV
+-- ================= HITBOX =================
+
+local function ApplyHitbox(p)
+    if not Combat.Hitbox then return end
+    if p == LocalPlayer then return end
+    if Combat.TeamCheck and p.Team == LocalPlayer.Team then return end
+    if not p.Character then return end
+
+    local hrp = p.Character:FindFirstChild("HumanoidRootPart")
+    if hrp then
+        hrp.Size = Vector3.new(
+            Combat.HitboxSize,
+            Combat.HitboxSize,
+            Combat.HitboxSize
+        )
+        hrp.Transparency = 0.7
+        hrp.CanCollide = false
+    end
+end
+
+for _,p in pairs(Players:GetPlayers()) do
+    ApplyHitbox(p)
+end
+
+Players.PlayerAdded:Connect(function(p)
+    p.CharacterAdded:Connect(function()
+        task.wait(0.5)
+        ApplyHitbox(p)
+    end)
 end)
+
+-- ================= UI COMBAT =================
+
+CombatTab:CreateToggle({
+    Name = "Dot Crosshair",
+    Callback = function(v)
+        Combat.Dot = v
+    end
+})
+
+CombatTab:CreateToggle({
+    Name = "Aim Head",
+    Callback = function(v)
+        Combat.AimHead = v
+        if v then Combat.AimBody = false end
+    end
+})
+
+CombatTab:CreateToggle({
+    Name = "Aim Body",
+    Callback = function(v)
+        Combat.AimBody = v
+        if v then Combat.AimHead = false end
+    end
+})
+
+CombatTab:CreateToggle({
+    Name = "Enable POV",
+    Callback = function(v)
+        Combat.POV = v
+    end
+})
+
+CombatTab:CreateSlider({
+    Name = "POV Radius",
+    Range = {50,300},
+    Increment = 10,
+    CurrentValue = 150,
+    Callback = function(v)
+        Combat.Radius = v
+    end
+})
+
+CombatTab:CreateToggle({
+    Name = "Hitbox Expander",
+    Callback = function(v)
+        Combat.Hitbox = v
+    end
+})
+
+CombatTab:CreateSlider({
+    Name = "Hitbox Size",
+    Range = {2,12},
+    Increment = 1,
+    CurrentValue = 5,
+    Callback = function(v)
+        Combat.HitboxSize = v
+        for _,p in pairs(Players:GetPlayers()) do
+            ApplyHitbox(p)
+        end
+    end
+})
+
+CombatTab:CreateToggle({
+    Name = "Team Check",
+    Callback = function(v)
+        Combat.TeamCheck = v
+    end
+})
