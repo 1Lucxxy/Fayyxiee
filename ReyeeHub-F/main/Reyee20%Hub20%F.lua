@@ -38,8 +38,8 @@ local Scripts = {
         loadstring(game:HttpGet("https://raw.githubusercontent.com/1Lucxxy/Fayyxiee/refs/heads/main/Script-Games/main/violencedistrict.lua"))()
     end,
 
-    ["Script 2"] = function()
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/USERNAME/REPO/main/script2.lua"))()
+    ["Aimbot"] = function()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/1Lucxxy/Fayyxiee/refs/heads/main/Script-Games/main/aimbot.lua"))()
     end,
 
     ["Script 3"] = function()
