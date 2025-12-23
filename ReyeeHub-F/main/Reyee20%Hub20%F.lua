@@ -1,268 +1,204 @@
---==================================
--- RAYFIELD LOAD
---==================================
-local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
+--// ORION LIBRARY
+local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/shlexware/Orion/main/source"))()
 
---==================================
--- SERVICES
---==================================
+--// WINDOW
+local Window = OrionLib:MakeWindow({
+    Name = "Visual ESP",
+    HidePremium = false,
+    SaveConfig = false,
+    ConfigFolder = "VisualESP"
+})
+
+--// SERVICES
 local Players = game:GetService("Players")
-local TeamsService = game:GetService("Teams")
 local RunService = game:GetService("RunService")
-
-local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
+local LocalPlayer = Players.LocalPlayer
 
---==================================
--- WINDOW & TABS
---==================================
-local Window = Rayfield:CreateWindow({
-    Name = "Violence District ESP",
-    LoadingTitle = "Violence District",
-    LoadingSubtitle = "ESP Loaded",
-    ConfigurationSaving = { Enabled = false }
-})
+--// SETTINGS
+local Settings = {
+    Enabled = false,
 
-local ESPTab    = Window:CreateTab("ESP", 4483362458)
-local PlayerTab = Window:CreateTab("Player", 4483362458)
-local MiscTab   = Window:CreateTab("Misc", 4483362458)
+    Box = false,
+    Line = false,
+    Name = false,
+    HealthBar = false,
 
---==================================
--- HIGHLIGHT CORE
---==================================
-local Highlights = {}
-
-local function addHighlight(obj, color)
-    if not obj or Highlights[obj] then return end
-    local h = Instance.new("Highlight")
-    h.Adornee = obj
-    h.FillColor = color
-    h.FillTransparency = 0.8
-    h.OutlineTransparency = 1
-    h.Parent = obj
-    Highlights[obj] = h
-end
-
-local function removeHighlight(obj)
-    if Highlights[obj] then
-        Highlights[obj]:Destroy()
-        Highlights[obj] = nil
-    end
-end
-
---==================================
--- PLAYER ESP (SURVIVOR / KILLER)
---==================================
-local PlayerESPEnabled = false
-
-task.spawn(function()
-    while task.wait(1) do
-        if not PlayerESPEnabled then continue end
-
-        for _,plr in ipairs(Players:GetPlayers()) do
-            if plr ~= LocalPlayer
-            and plr.Team
-            and plr.Character
-            and plr.Character:FindFirstChild("HumanoidRootPart") then
-
-                local team = string.lower(plr.Team.Name)
-                if team == "killer" then
-                    addHighlight(plr.Character, Color3.fromRGB(255,0,0))
-                elseif team == "survivors" then
-                    addHighlight(plr.Character, Color3.fromRGB(0,255,0))
-                end
-            end
-        end
-    end
-end)
-
-ESPTab:CreateToggle({
-    Name = "Highlight Survivor & Killer",
-    Callback = function(v)
-        PlayerESPEnabled = v
-        if not v then
-            for obj,_ in pairs(Highlights) do
-                if Players:GetPlayerFromCharacter(obj) then
-                    removeHighlight(obj)
-                end
-            end
-        end
-    end
-})
-
---==================================
--- OBJECT ESP CACHE
---==================================
-local ModelCache = {
-    Generator = {},
-    Hook = {},
-    Window = {},
-    Gift = {}
+    Color = Color3.fromRGB(255, 0, 0)
 }
 
-for _,v in ipairs(workspace:GetDescendants()) do
-    if v:IsA("Model") and ModelCache[v.Name] then
-        table.insert(ModelCache[v.Name], v)
-    end
-end
+--// DRAWING STORAGE
+local Drawings = {}
 
-local function toggleModelESP(name, color, enabled)
-    for _,model in ipairs(ModelCache[name]) do
-        if enabled then
-            addHighlight(model, color)
-        else
-            removeHighlight(model)
+--// CLEAN
+local function ClearESP()
+    for _, d in pairs(Drawings) do
+        if d then
+            pcall(function()
+                d:Remove()
+            end)
         end
     end
+    table.clear(Drawings)
 end
 
---==================================
--- OBJECT ESP TOGGLES
---==================================
-ESPTab:CreateToggle({
-    Name="Highlight Generator",
-    Callback=function(v)
-        toggleModelESP("Generator", Color3.fromRGB(255,255,0), v)
+--// CREATE DRAWING
+local function New(type, props)
+    local d = Drawing.new(type)
+    for i, v in pairs(props) do
+        d[i] = v
     end
-})
+    table.insert(Drawings, d)
+    return d
+end
 
-ESPTab:CreateToggle({
-    Name="Highlight Hook",
-    Callback=function(v)
-        toggleModelESP("Hook", Color3.fromRGB(255,0,255), v)
-    end
-})
-
-ESPTab:CreateToggle({
-    Name="Highlight Window",
-    Callback=function(v)
-        toggleModelESP("Window", Color3.fromRGB(0,170,255), v)
-    end
-})
-
-ESPTab:CreateToggle({
-    Name="Highlight Event (Gift)",
-    Callback=function(v)
-        toggleModelESP("Gift", Color3.fromRGB(255,140,0), v)
-    end
-})
-
---==================================
--- CROSSHAIR DOT
---==================================
-local CrosshairEnabled = false
-local Crosshair = Drawing.new("Circle")
-Crosshair.Radius = 2
-Crosshair.Filled = true
-Crosshair.Thickness = 1
-Crosshair.Visible = false
-
-ESPTab:CreateToggle({
-    Name="Crosshair Dot",
-    Callback=function(v)
-        CrosshairEnabled = v
-        Crosshair.Visible = v
-    end
-})
-
+--// MAIN LOOP
 RunService.RenderStepped:Connect(function()
-    if CrosshairEnabled then
-        Crosshair.Position = Vector2.new(
-            Camera.ViewportSize.X/2,
-            Camera.ViewportSize.Y/2
-        )
-    end
-end)
+    ClearESP()
+    if not Settings.Enabled then return end
 
---==================================
--- PLAYER TAB : WALKSPEED
---==================================
-local WalkSpeedEnabled = false
-local WalkSpeedValue = 16
+    for _, plr in pairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer
+        and plr.Character
+        and plr.Character:FindFirstChild("HumanoidRootPart")
+        and plr.Character:FindFirstChild("Humanoid") then
 
-local WalkSpeedSlider = PlayerTab:CreateSlider({
-    Name="WalkSpeed",
-    Range={16,150},
-    Increment=1,
-    CurrentValue=WalkSpeedValue,
-    Callback=function(v)
-        WalkSpeedValue = v
-    end
-})
+            local hrp = plr.Character.HumanoidRootPart
+            local hum = plr.Character.Humanoid
 
-PlayerTab:CreateToggle({
-    Name="Enable WalkSpeed",
-    Callback=function(v)
-        WalkSpeedEnabled = v
-        WalkSpeedSlider:SetDisabled(not v)
-    end
-})
+            local pos, onscreen = Camera:WorldToViewportPoint(hrp.Position)
+            if not onscreen then continue end
 
-task.defer(function()
-    WalkSpeedSlider:SetDisabled(true)
-end)
+            local screenPos = Vector2.new(pos.X, pos.Y)
+            local boxSize = Vector2.new(40, 60)
 
-RunService.Heartbeat:Connect(function()
-    if WalkSpeedEnabled then
-        local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-        if hum then
-            hum.WalkSpeed = WalkSpeedValue
-        end
-    end
-end)
-
---==================================
--- MISC : CEK TEAM MAP
---==================================
-MiscTab:CreateButton({
-    Name="Cek Team (Map)",
-    Callback=function()
-        local result = "Team di map:\n"
-        for _,team in ipairs(TeamsService:GetTeams()) do
-            local count = 0
-            for _,plr in ipairs(Players:GetPlayers()) do
-                if plr.Team == team then count += 1 end
+            -- BOX
+            if Settings.Box then
+                New("Square", {
+                    Position = screenPos - boxSize / 2,
+                    Size = boxSize,
+                    Color = Settings.Color,
+                    Thickness = 2,
+                    Filled = false,
+                    Visible = true
+                })
             end
-            result ..= "- "..team.Name.." : "..count.." player\n"
-        end
 
-        Rayfield:Notify({
-            Title="Violence District",
-            Content=result,
-            Duration=8
-        })
-    end
-})
+            -- LINE
+            if Settings.Line then
+                New("Line", {
+                    From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y),
+                    To = screenPos,
+                    Color = Settings.Color,
+                    Thickness = 2,
+                    Visible = true
+                })
+            end
 
---==================================
--- MISC : CEK MODEL DEKAT PLAYER
---==================================
-MiscTab:CreateButton({
-    Name="Cek Model Sekitar (5 studs)",
-    Callback=function()
-        local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-        if not hrp then return end
+            -- NAME
+            if Settings.Name then
+                New("Text", {
+                    Text = plr.Name,
+                    Position = screenPos - Vector2.new(0, 35),
+                    Size = 16,
+                    Color = Settings.Color,
+                    Center = true,
+                    Outline = true,
+                    Visible = true
+                })
+            end
 
-        local found = {}
-        local result = "Model sekitar:\n"
+            -- HEALTH BAR
+            if Settings.HealthBar then
+                local hp = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
+                local barHeight = boxSize.Y * hp
 
-        for _,v in ipairs(workspace:GetDescendants()) do
-            if v:IsA("Model") and v.PrimaryPart then
-                if (v.PrimaryPart.Position - hrp.Position).Magnitude <= 5 and not found[v.Name] then
-                    found[v.Name] = true
-                    result ..= "- "..v.Name.."\n"
-                end
+                -- background
+                New("Square", {
+                    Position = screenPos + Vector2.new(-30, -boxSize.Y/2),
+                    Size = Vector2.new(4, boxSize.Y),
+                    Color = Color3.fromRGB(50,50,50),
+                    Filled = true,
+                    Visible = true
+                })
+
+                -- hp bar
+                New("Square", {
+                    Position = screenPos + Vector2.new(-30, boxSize.Y/2 - barHeight),
+                    Size = Vector2.new(4, barHeight),
+                    Color = Color3.fromRGB(0,255,0),
+                    Filled = true,
+                    Visible = true
+                })
             end
         end
+    end
+end)
 
-        if result == "Model sekitar:\n" then
-            result ..= "Tidak ada model"
+--// VISUAL TAB
+local VisualTab = Window:MakeTab({
+    Name = "Visual",
+    Icon = "rbxassetid://4483345998",
+    PremiumOnly = false
+})
+
+-- MASTER TOGGLE
+VisualTab:AddToggle({
+    Name = "Enable Visual ESP",
+    Default = false,
+    Callback = function(v)
+        Settings.Enabled = v
+        if not v then
+            ClearESP()
         end
-
-        Rayfield:Notify({
-            Title="Cek Model",
-            Content=result,
-            Duration=8
-        })
     end
 })
+
+VisualTab:AddSeparator()
+
+-- FEATURES
+VisualTab:AddToggle({
+    Name = "Box ESP",
+    Default = false,
+    Callback = function(v)
+        Settings.Box = v
+    end
+})
+
+VisualTab:AddToggle({
+    Name = "Line ESP",
+    Default = false,
+    Callback = function(v)
+        Settings.Line = v
+    end
+})
+
+VisualTab:AddToggle({
+    Name = "Name ESP",
+    Default = false,
+    Callback = function(v)
+        Settings.Name = v
+    end
+})
+
+VisualTab:AddToggle({
+    Name = "Health Bar",
+    Default = false,
+    Callback = function(v)
+        Settings.HealthBar = v
+    end
+})
+
+VisualTab:AddSeparator()
+
+-- COLOR
+VisualTab:AddColorpicker({
+    Name = "ESP Color",
+    Default = Settings.Color,
+    Callback = function(v)
+        Settings.Color = v
+    end
+})
+
+--// INIT
+OrionLib:Init()
