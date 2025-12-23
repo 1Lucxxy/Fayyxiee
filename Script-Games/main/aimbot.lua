@@ -1,23 +1,19 @@
-local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/shlexware/Orion/main/source"))()
+local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
 
-local Window = OrionLib:MakeWindow({
-    Name = "My GUI",
-    HidePremium = false,
-    SaveConfig = true,
-    ConfigFolder = "MyConfig"
+local Window = Rayfield:CreateWindow({
+   Name = "Rayfield Test",
+   LoadingTitle = "Loading UI",
+   LoadingSubtitle = "by dafaaa",
+   ConfigurationSaving = {
+      Enabled = false
+   }
 })
 
-local Tab = Window:MakeTab({
-    Name = "Main",
-    Icon = "rbxassetid://4483345998",
-    PremiumOnly = false
-})
+local Tab = Window:CreateTab("Main", 4483362458)
 
-Tab:AddButton({
-    Name = "Hello",
-    Callback = function()
-        print("Hello Orion")
-    end
+Tab:CreateButton({
+   Name = "Hello",
+   Callback = function()
+      print("Rayfield works!")
+   end,
 })
-
-OrionLib:Init()
