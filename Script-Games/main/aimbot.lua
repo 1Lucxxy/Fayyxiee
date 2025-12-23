@@ -1,9 +1,9 @@
--- ================= SERVICES =================
+-- SERVICES
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
 local LocalPlayer = Players.LocalPlayer
 
--- ================= LOAD RAYFIELD =================
+-- LOAD RAYFIELD
 local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
 
 local Window = Rayfield:CreateWindow({
@@ -15,7 +15,7 @@ local Window = Rayfield:CreateWindow({
 
 local VisualTab = Window:CreateTab("Visual", 4483362458)
 
--- ================= SETTINGS =================
+-- SETTINGS (MASTER)
 local Settings = {
     Enabled = false,
     TeamCheck = true,
@@ -24,10 +24,11 @@ local Settings = {
     Color = Color3.fromRGB(255, 0, 0)
 }
 
--- ================= CACHE =================
+-- CACHE
 local Cache = {}
 
 -- ================= UTILS =================
+
 local function IsEnemy(p)
     if not Settings.TeamCheck then return true end
     if not p.Team or not LocalPlayer.Team then return true end
@@ -39,9 +40,9 @@ local function ClearESP(p)
         if Cache[p].Loop then
             task.cancel(Cache[p].Loop)
         end
-        for _,v in pairs(Cache[p]) do
-            if typeof(v) == "Instance" then
-                v:Destroy()
+        for _,obj in pairs(Cache[p]) do
+            if typeof(obj) == "Instance" then
+                obj:Destroy()
             end
         end
         Cache[p] = nil
@@ -55,6 +56,7 @@ local function ClearAll()
 end
 
 -- ================= APPLY ESP =================
+
 local function ApplyESP(p)
     if not Settings.Enabled then return end
     if p == LocalPlayer then return end
@@ -69,21 +71,21 @@ local function ApplyESP(p)
     local hum = char:FindFirstChildOfClass("Humanoid")
     if not hrp or not hum or hum.Health <= 0 then return end
 
-    -- 🔴 HIGHLIGHT BODY
+    -- HIGHLIGHT (STABLE)
     local hl = Instance.new("Highlight")
     hl.Adornee = char
     hl.Parent = CoreGui
     hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
     hl.OutlineTransparency = 1
-    hl.FillTransparency = 0.8
     hl.FillColor = Settings.Color
+    hl.FillTransparency = 0.8
     Cache[p].Highlight = hl
 
-    -- 🏷️ BILLBOARD (UKURAN AMAN, SEDIKIT BESAR)
+    -- BILLBOARD
     local gui = Instance.new("BillboardGui")
     gui.Adornee = hrp
-    gui.Size = UDim2.fromScale(5, 1.6)
-    gui.StudsOffset = Vector3.new(0, 3.5, 0)
+    gui.Size = UDim2.fromScale(5, 1.4)
+    gui.StudsOffset = Vector3.new(0, 3.6, 0)
     gui.AlwaysOnTop = true
     gui.Parent = CoreGui
     Cache[p].Billboard = gui
@@ -98,19 +100,16 @@ local function ApplyESP(p)
     txt.Parent = gui
     Cache[p].Text = txt
 
-    -- 🔄 LOOP UPDATE (ANTI ERROR DELTA)
+    -- LOOP (MASTER SAFE)
     Cache[p].Loop = task.spawn(function()
         while Settings.Enabled and hum.Health > 0 do
-            if not IsEnemy(p) then break end
-
-            local myChar = LocalPlayer.Character
-            local myHRP = myChar and myChar:FindFirstChild("HumanoidRootPart")
-            if not myHRP then
-                task.wait()
-                continue
+            if not Settings.Enabled or not IsEnemy(p) then
+                break
             end
 
-            local dist = math.floor((myHRP.Position - hrp.Position).Magnitude)
+            local dist = math.floor(
+                (LocalPlayer.Character.HumanoidRootPart.Position - hrp.Position).Magnitude
+            )
 
             txt.Text =
                 (Settings.ShowName and p.Name or "") ..
@@ -123,6 +122,7 @@ local function ApplyESP(p)
 end
 
 -- ================= PLAYER HANDLER =================
+
 local function SetupPlayer(p)
     p.CharacterAdded:Connect(function()
         task.wait(0.4)
@@ -141,9 +141,12 @@ for _,p in pairs(Players:GetPlayers()) do
 end
 
 Players.PlayerAdded:Connect(SetupPlayer)
-Players.PlayerRemoving:Connect(ClearESP)
+Players.PlayerRemoving:Connect(function(p)
+    ClearESP(p)
+end)
 
 -- ================= UI =================
+
 VisualTab:CreateToggle({
     Name = "Enable Highlight (MASTER)",
     Callback = function(v)
@@ -203,6 +206,7 @@ VisualTab:CreateColorPicker({
     end
 })
 
+-- 🔄 REFRESH BUTTON
 VisualTab:CreateButton({
     Name = "Refresh Highlight",
     Callback = function()
