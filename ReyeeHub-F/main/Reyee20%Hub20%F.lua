@@ -1,95 +1,87 @@
---==================================================
--- TEXT MAP / GAME SELECTOR (ANTI BUG VERSION)
---==================================================
+--========================================
+-- SIMPLE TEXT MAP SELECTOR (RESET TOTAL)
+--========================================
 
 local CoreGui = game:GetService("CoreGui")
 
--- Hapus GUI lama
+-- hapus gui lama
 pcall(function()
-    CoreGui:FindFirstChild("TextMapSelector"):Destroy()
+    CoreGui:FindFirstChild("MapSelectorGui"):Destroy()
 end)
 
---==============================
+--====================
 -- GUI
---==============================
-local ScreenGui = Instance.new("ScreenGui", CoreGui)
-ScreenGui.Name = "TextMapSelector"
-ScreenGui.ResetOnSpawn = false
+--====================
+local gui = Instance.new("ScreenGui")
+gui.Name = "MapSelectorGui"
+gui.Parent = CoreGui
+gui.ResetOnSpawn = false
 
-local Frame = Instance.new("Frame", ScreenGui)
-Frame.Size = UDim2.new(0, 280, 0, 240)
-Frame.Position = UDim2.new(0.5, -140, 0.5, -120)
-Frame.BackgroundColor3 = Color3.fromRGB(18,18,18)
-Frame.BorderSizePixel = 0
-Frame.Active = true
-Frame.Draggable = true
+local frame = Instance.new("Frame", gui)
+frame.Size = UDim2.new(0, 260, 0, 200)
+frame.Position = UDim2.new(0.5, -130, 0.5, -100)
+frame.BackgroundColor3 = Color3.fromRGB(20,20,20)
+frame.Active = true
+frame.Draggable = true
 
-local Title = Instance.new("TextLabel", Frame)
-Title.Size = UDim2.new(1,0,0,40)
-Title.Text = "SELECT MAP / GAME"
-Title.Font = Enum.Font.GothamBold
-Title.TextSize = 14
-Title.TextColor3 = Color3.new(1,1,1)
-Title.BackgroundTransparency = 1
+local title = Instance.new("TextLabel", frame)
+title.Size = UDim2.new(1,0,0,35)
+title.Text = "SELECT MAP"
+title.TextColor3 = Color3.new(1,1,1)
+title.Font = Enum.Font.GothamBold
+title.TextSize = 14
+title.BackgroundTransparency = 1
 
-local List = Instance.new("Frame", Frame)
-List.Position = UDim2.new(0,15,0,45)
-List.Size = UDim2.new(1,-30,1,-55)
-List.BackgroundTransparency = 1
+local list = Instance.new("Frame", frame)
+list.Position = UDim2.new(0,10,0,40)
+list.Size = UDim2.new(1,-20,1,-50)
+list.BackgroundTransparency = 1
 
-local Layout = Instance.new("UIListLayout", List)
-Layout.Padding = UDim.new(0,12)
+local layout = Instance.new("UIListLayout", list)
+layout.Padding = UDim.new(0,8)
 
---==============================
--- MAP LIST (FORMAT AMAN)
--- GANTI NAMA & LINK DI SINI
---==============================
+--====================
+-- MAP DATA (INI SAJA YANG DI EDIT)
+--====================
 local Maps = {
-    ["DESERT"] = "https://raw.githubusercontent.com/USER/REPO/main/desert.lua",
-    ["CITY"]   = "https://raw.githubusercontent.com/USER/REPO/main/city.lua",
-    ["SNOW"]   = "https://raw.githubusercontent.com/USER/REPO/main/snow.lua",
-    ["tes"] = "https://raw.githubusercontent.com/USER/REPO/main/forest.lua"
+    ["MAP A"] = "https://raw.githubusercontent.com/USER/REPO/main/mapA.lua",
+    ["MAP B"] = "https://raw.githubusercontent.com/USER/REPO/main/mapB.lua",
+    ["MAP C"] = "https://raw.githubusercontent.com/USER/REPO/main/mapC.lua",
 }
 
-print("TOTAL MAP:", table.getn(Maps)) -- debug
+-- DEBUG (WAJIB ADA)
+print("MAP COUNT:", 0)
+for _ in pairs(Maps) do
+    print("MAP FOUND")
+end
 
---==============================
--- CREATE TEXT SELECTOR
---==============================
-for name, url in pairs(Maps) do
-    local Btn = Instance.new("TextButton", List)
-    Btn.Size = UDim2.new(1,0,0,30)
-    Btn.Text = name
-    Btn.Font = Enum.Font.Gotham
-    Btn.TextSize = 13
-    Btn.TextXAlignment = Enum.TextXAlignment.Left
-    Btn.TextColor3 = Color3.fromRGB(220,220,220)
-    Btn.BackgroundTransparency = 1
-    Btn.AutoButtonColor = false
+--====================
+-- BUAT TEXT BUTTON
+--====================
+for mapName, mapUrl in pairs(Maps) do
+    local btn = Instance.new("TextButton", list)
+    btn.Size = UDim2.new(1,0,0,28)
+    btn.Text = mapName
+    btn.Font = Enum.Font.Gotham
+    btn.TextSize = 13
+    btn.TextXAlignment = Enum.TextXAlignment.Left
+    btn.TextColor3 = Color3.fromRGB(220,220,220)
+    btn.BackgroundTransparency = 1
+    btn.AutoButtonColor = false
 
-    Btn.MouseEnter:Connect(function()
-        Btn.TextColor3 = Color3.fromRGB(0,170,255)
-    end)
+    btn.MouseButton1Click:Connect(function()
+        -- CLOSE GUI DULU
+        gui:Destroy()
 
-    Btn.MouseLeave:Connect(function()
-        Btn.TextColor3 = Color3.fromRGB(220,220,220)
-    end)
-
-    Btn.MouseButton1Click:Connect(function()
-        Btn.Text = "Loading..."
-
-        -- 🔴 TUTUP GUI DULU (PASTI CLOSE)
-        ScreenGui:Destroy()
-
-        -- 🔵 LOADSTRING DI THREAD BARU (ANTI FREEZE)
+        -- LOAD SCRIPT
         task.spawn(function()
             local ok, err = pcall(function()
-                local src = game:HttpGet(url)
+                local src = game:HttpGet(mapUrl)
                 loadstring(src)()
             end)
 
             if not ok then
-                warn("Load error:", err)
+                warn("LOAD ERROR:", err)
             end
         end)
     end)
