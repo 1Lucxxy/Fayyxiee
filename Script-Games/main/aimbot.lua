@@ -3,11 +3,11 @@ local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
 local LocalPlayer = Players.LocalPlayer
 
--- RAYFIELD
+-- LOAD RAYFIELD
 local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
 
 local Window = Rayfield:CreateWindow({
-    Name = "Delta Visual FIX",
+    Name = "Delta Visual FINAL",
     LoadingTitle = "Stable Visual",
     LoadingSubtitle = "by dafaaa",
     ConfigurationSaving = { Enabled = false }
@@ -15,19 +15,20 @@ local Window = Rayfield:CreateWindow({
 
 local VisualTab = Window:CreateTab("Visual", 4483362458)
 
--- SETTINGS
+-- SETTINGS (MASTER)
 local Settings = {
     Enabled = false,
     TeamCheck = true,
-    Color = Color3.fromRGB(255,0,0),
     ShowName = true,
-    ShowDistance = true
+    ShowDistance = true,
+    Color = Color3.fromRGB(255, 0, 0)
 }
 
 -- CACHE
 local Cache = {}
 
--- UTILS
+-- ================= UTILS =================
+
 local function IsEnemy(p)
     if not Settings.TeamCheck then return true end
     if not p.Team or not LocalPlayer.Team then return true end
@@ -36,6 +37,9 @@ end
 
 local function ClearESP(p)
     if Cache[p] then
+        if Cache[p].Loop then
+            task.cancel(Cache[p].Loop)
+        end
         for _,obj in pairs(Cache[p]) do
             if typeof(obj) == "Instance" then
                 obj:Destroy()
@@ -45,10 +49,17 @@ local function ClearESP(p)
     end
 end
 
--- APPLY ESP
+local function ClearAll()
+    for _,p in pairs(Players:GetPlayers()) do
+        ClearESP(p)
+    end
+end
+
+-- ================= APPLY ESP =================
+
 local function ApplyESP(p)
-    if p == LocalPlayer then return end
     if not Settings.Enabled then return end
+    if p == LocalPlayer then return end
     if not IsEnemy(p) then return end
     if not p.Character then return end
 
@@ -72,15 +83,15 @@ local function ApplyESP(p)
     -- BILLBOARD
     local gui = Instance.new("BillboardGui")
     gui.Adornee = hrp
-    gui.Size = UDim2.fromScale(4,1)
-    gui.StudsOffset = Vector3.new(0,3,0)
+    gui.Size = UDim2.fromScale(4, 1)
+    gui.StudsOffset = Vector3.new(0, 3, 0)
     gui.AlwaysOnTop = true
     gui.Parent = CoreGui
     Cache[p].Billboard = gui
 
     local txt = Instance.new("TextLabel")
     txt.BackgroundTransparency = 1
-    txt.Size = UDim2.fromScale(1,1)
+    txt.Size = UDim2.fromScale(1, 1)
     txt.TextScaled = true
     txt.Font = Enum.Font.GothamBold
     txt.TextStrokeTransparency = 0
@@ -88,11 +99,10 @@ local function ApplyESP(p)
     txt.Parent = gui
     Cache[p].Text = txt
 
-    -- UPDATE LOOP
-    task.spawn(function()
+    -- LOOP (MASTER SAFE)
+    Cache[p].Loop = task.spawn(function()
         while Settings.Enabled and hum.Health > 0 do
-            if not IsEnemy(p) then
-                ClearESP(p)
+            if not Settings.Enabled or not IsEnemy(p) then
                 break
             end
 
@@ -102,7 +112,7 @@ local function ApplyESP(p)
 
             txt.Text =
                 (Settings.ShowName and p.Name or "") ..
-                (Settings.ShowDistance and ("\n["..dist.."m]") or "")
+                (Settings.ShowDistance and ("\n[" .. dist .. "m]") or "")
 
             task.wait(0.25)
         end
@@ -110,13 +120,17 @@ local function ApplyESP(p)
     end)
 end
 
--- PLAYER HANDLER
+-- ================= PLAYER HANDLER =================
+
 local function SetupPlayer(p)
     p.CharacterAdded:Connect(function()
-        task.wait(0.5)
-        ApplyESP(p)
+        task.wait(0.4)
+        if Settings.Enabled then
+            ApplyESP(p)
+        end
     end)
-    if p.Character then
+
+    if p.Character and Settings.Enabled then
         ApplyESP(p)
     end
 end
@@ -125,18 +139,22 @@ for _,p in pairs(Players:GetPlayers()) do
     SetupPlayer(p)
 end
 
+Players.PlayerAdded:Connect(SetupPlayer)
 Players.PlayerRemoving:Connect(function(p)
     ClearESP(p)
 end)
 
--- UI
+-- ================= UI =================
+
 VisualTab:CreateToggle({
-    Name = "Enable Highlight",
+    Name = "Enable Highlight (MASTER)",
     Callback = function(v)
         Settings.Enabled = v
-        for _,p in pairs(Players:GetPlayers()) do
-            ClearESP(p)
-            if v then ApplyESP(p) end
+        ClearAll()
+        if v then
+            for _,p in pairs(Players:GetPlayers()) do
+                ApplyESP(p)
+            end
         end
     end
 })
@@ -146,9 +164,11 @@ VisualTab:CreateToggle({
     CurrentValue = true,
     Callback = function(v)
         Settings.TeamCheck = v
-        for _,p in pairs(Players:GetPlayers()) do
-            ClearESP(p)
-            ApplyESP(p)
+        if Settings.Enabled then
+            ClearAll()
+            for _,p in pairs(Players:GetPlayers()) do
+                ApplyESP(p)
+            end
         end
     end
 })
@@ -181,6 +201,18 @@ VisualTab:CreateColorPicker({
             if data.Text then
                 data.Text.TextColor3 = c
             end
+        end
+    end
+})
+
+-- 🔄 REFRESH BUTTON
+VisualTab:CreateButton({
+    Name = "Refresh Highlight",
+    Callback = function()
+        if not Settings.Enabled then return end
+        ClearAll()
+        for _,p in pairs(Players:GetPlayers()) do
+            ApplyESP(p)
         end
     end
 })
