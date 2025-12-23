@@ -7,7 +7,7 @@ local LocalPlayer = Players.LocalPlayer
 local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
 
 local Window = Rayfield:CreateWindow({
-    Name = "Delta Visual + Combat",
+    Name = "Delta Visual Clean",
     LoadingTitle = "Loading",
     LoadingSubtitle = "by dafaaa",
     ConfigurationSaving = { Enabled = false }
@@ -29,7 +29,6 @@ local Hitbox = {
     Size = Vector3.new(6,6,6)
 }
 
--- CACHE
 local ESP = {}
 local HitboxCache = {}
 
@@ -58,7 +57,7 @@ local function ClearAllESP()
     end
 end
 
--- ================= VISUAL ESP =================
+-- ================= VISUAL =================
 
 local function ApplyESP(p)
     if not Visual.Enabled then return end
@@ -84,10 +83,10 @@ local function ApplyESP(p)
     hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
     ESP[p].Highlight = hl
 
-    -- Name + Distance (LEBIH KECIL)
+    -- Name + Distance (KECIL)
     local gui = Instance.new("BillboardGui")
     gui.Adornee = hrp
-    gui.Size = UDim2.fromScale(3.5, 1.4)
+    gui.Size = UDim2.fromScale(3, 1.2)
     gui.StudsOffset = Vector3.new(0, 3, 0)
     gui.AlwaysOnTop = true
     gui.Parent = CoreGui
@@ -98,7 +97,7 @@ local function ApplyESP(p)
     txt.Size = UDim2.fromScale(1,1)
     txt.Font = Enum.Font.GothamBold
     txt.TextScaled = true
-    txt.TextStrokeTransparency = 0.4
+    txt.TextStrokeTransparency = 0.5
     txt.TextColor3 = Visual.Color
     txt.Parent = gui
     ESP[p].Text = txt
@@ -120,7 +119,12 @@ end
 
 local function ClearHitbox(p)
     if HitboxCache[p] then
-        HitboxCache[p]:Destroy()
+        local hrp = HitboxCache[p]
+        if hrp then
+            hrp.Size = Vector3.new(2,2,1)
+            hrp.Transparency = 1
+            hrp.Material = Enum.Material.Plastic
+        end
         HitboxCache[p] = nil
     end
 end
@@ -131,26 +135,15 @@ local function ApplyHitbox(p)
     if not IsEnemy(p) then return end
     if not p.Character then return end
 
-    ClearHitbox(p)
-
     local hrp = p.Character:FindFirstChild("HumanoidRootPart")
     if not hrp then return end
 
     hrp.Size = Hitbox.Size
     hrp.Transparency = 0.5
-    hrp.BrickColor = BrickColor.new("Really red")
     hrp.Material = Enum.Material.Neon
     hrp.CanCollide = false
 
     HitboxCache[p] = hrp
-end
-
-local function RefreshHitbox()
-    for _,p in pairs(Players:GetPlayers()) do
-        if p ~= LocalPlayer then
-            ApplyHitbox(p)
-        end
-    end
 end
 
 -- ================= PLAYER EVENTS =================
@@ -227,22 +220,18 @@ VisualTab:CreateButton({
     end
 })
 
--- COMBAT TAB
 CombatTab:CreateToggle({
     Name = "Hitbox Expander",
     Callback = function(v)
         Hitbox.Enabled = v
         if not v then
-            for p,hrp in pairs(HitboxCache) do
-                if hrp then
-                    hrp.Size = Vector3.new(2,2,1)
-                    hrp.Transparency = 1
-                    hrp.Material = Enum.Material.Plastic
-                end
+            for p,_ in pairs(HitboxCache) do
+                ClearHitbox(p)
             end
-            HitboxCache = {}
         else
-            RefreshHitbox()
+            for _,p in pairs(Players:GetPlayers()) do
+                ApplyHitbox(p)
+            end
         end
     end
 })
