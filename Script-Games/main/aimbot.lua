@@ -1,79 +1,60 @@
--- Rayfield Library
-local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
+-- Pastikan Rayfield sudah disertakan di projectmu
+local Rayfield = loadstring(game:HttpGet('https://raw.githubusercontent.com/shlexware/Rayfield/main/source'))()
 
--- Services
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
-local Camera = workspace.CurrentCamera
-
-local LocalPlayer = Players.LocalPlayer
-
--- Settings
-local AimbotEnabled = false
-local Smoothness = 0.3 -- ubah ke 0.3 supaya kelihatan gerak
-
--- UI
 local Window = Rayfield:CreateWindow({
-    Name = "Basic Aimbot FIX",
-    LoadingTitle = "Loading",
-    LoadingSubtitle = "Step 1",
-    ConfigurationSaving = { Enabled = false }
+    Name = "Camera Follow Script",
+    LoadingTitle = "Camera Follow",
+    LoadingSubtitle = "by Dafaaa",
+    ConfigurationSaving = {
+       Enabled = true,
+       FolderName = nil, -- folder penyimpanan
+       FileName = "CameraFollowConfig"
+    },
+    Discord = {
+       Enabled = false,
+    },
+    KeySystem = false
 })
 
-local CombatTab = Window:CreateTab("Combat", 4483362458)
+-- Toggle untuk mengaktifkan/mematikan camera follow
+local CameraFollowToggle = false
+local TargetPlayerName = nil
 
+-- Tab Combat
+local CombatTab = Window:CreateTab("Camera", 4483362458)
+
+-- Input untuk memilih target player
+CombatTab:CreateInput({
+    Name = "Target Player",
+    PlaceholderText = "Masukkan nama player",
+    RemoveTextAfterFocusLost = false,
+    Callback = function(Value)
+        TargetPlayerName = Value
+    end
+})
+
+-- Toggle untuk mengikuti player
 CombatTab:CreateToggle({
-    Name = "Aimbot",
+    Name = "Follow Player",
     CurrentValue = false,
-    Callback = function(v)
-        AimbotEnabled = v
+    Flag = "FollowToggle",
+    Callback = function(Value)
+        CameraFollowToggle = Value
     end
 })
 
-CombatTab:CreateSlider({
-    Name = "Smoothness",
-    Range = {0,1},
-    Increment = 0.05,
-    CurrentValue = Smoothness,
-    Callback = function(v)
-        Smoothness = v
-    end
-})
-
--- Get closest player to camera center
-local function GetClosestPlayer()
-    local closestPart = nil
-    local shortestDistance = math.huge
-    local viewportCenter = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
-
-    for _, player in pairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Character then
-            local head = player.Character:FindFirstChild("Head")
-            local humanoid = player.Character:FindFirstChild("Humanoid")
-            if head and humanoid and humanoid.Health > 0 then
-                local screenPos, onScreen = Camera:WorldToViewportPoint(head.Position)
-                if onScreen then
-                    local distance = (Vector2.new(screenPos.X, screenPos.Y) - viewportCenter).Magnitude
-                    if distance < shortestDistance then
-                        shortestDistance = distance
-                        closestPart = head
-                    end
-                end
-            end
+-- Loop untuk update camera
+game:GetService("RunService").RenderStepped:Connect(function()
+    if CameraFollowToggle and TargetPlayerName then
+        local targetPlayer = game.Players:FindFirstChild(TargetPlayerName)
+        if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            local cam = workspace.CurrentCamera
+            cam.CameraType = Enum.CameraType.Scriptable
+            cam.CFrame = CFrame.new(cam.CFrame.Position, targetPlayer.Character.HumanoidRootPart.Position)
+        else
+            workspace.CurrentCamera.CameraType = Enum.CameraType.Custom
         end
-    end
-
-    return closestPart
-end
-
--- Aimbot loop
-RunService.RenderStepped:Connect(function()
-    if not AimbotEnabled then return end
-
-    local target = GetClosestPlayer()
-    if target then
-        local newCF = CFrame.new(Camera.CFrame.Position, target.Position)
-        Camera.CFrame = Camera.CFrame:Lerp(newCF, Smoothness)
+    else
+        workspace.CurrentCamera.CameraType = Enum.CameraType.Custom
     end
 end)
