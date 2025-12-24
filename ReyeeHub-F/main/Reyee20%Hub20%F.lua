@@ -39,7 +39,7 @@ local Scripts = {
     end,
 
     ["Aimbot"] = function()
-        loadstring(game:HttpGet("https://raw.githubusercontent.com/1Lucxxy/Fayyxiee/refs/heads/main/Script-Games/main/aimbot.lua"))()
+        loadstring(game:HttpGet("https://pastefy.app/CZWxFoTG/raw"))()
     end,
 
     ["Script 3"] = function()
