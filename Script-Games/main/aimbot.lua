@@ -11,11 +11,11 @@ local LocalPlayer = Players.LocalPlayer
 
 -- Settings
 local AimbotEnabled = false
-local Smoothness = 0.2
+local Smoothness = 0.3 -- ubah ke 0.3 supaya kelihatan gerak
 
 -- UI
 local Window = Rayfield:CreateWindow({
-    Name = "Basic Aimbot",
+    Name = "Basic Aimbot FIX",
     LoadingTitle = "Loading",
     LoadingSubtitle = "Step 1",
     ConfigurationSaving = { Enabled = false }
@@ -33,29 +33,28 @@ CombatTab:CreateToggle({
 
 CombatTab:CreateSlider({
     Name = "Smoothness",
-    Range = {0, 1},
+    Range = {0,1},
     Increment = 0.05,
-    CurrentValue = 0.2,
+    CurrentValue = Smoothness,
     Callback = function(v)
         Smoothness = v
     end
 })
 
--- Get closest player to mouse
+-- Get closest player to camera center
 local function GetClosestPlayer()
     local closestPart = nil
     local shortestDistance = math.huge
-    local mousePos = UserInputService:GetMouseLocation()
+    local viewportCenter = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
 
     for _, player in pairs(Players:GetPlayers()) do
         if player ~= LocalPlayer and player.Character then
             local head = player.Character:FindFirstChild("Head")
             local humanoid = player.Character:FindFirstChild("Humanoid")
-
             if head and humanoid and humanoid.Health > 0 then
                 local screenPos, onScreen = Camera:WorldToViewportPoint(head.Position)
                 if onScreen then
-                    local distance = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
+                    local distance = (Vector2.new(screenPos.X, screenPos.Y) - viewportCenter).Magnitude
                     if distance < shortestDistance then
                         shortestDistance = distance
                         closestPart = head
