@@ -68,9 +68,9 @@ local Scripts = {
         end
     },
     {
-        Name = "BladeBall",
+        Name = "Duelling",
         Callback = function()
-            loadstring(game:HttpGet("https://raw.githubusercontent.com/GraceERA/Scripts/refs/heas/main/Loader.lua"))()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/NysaDanielle/loader/refs/heads/main/auth"))()
         end
     },
     {
