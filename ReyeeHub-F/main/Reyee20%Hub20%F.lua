@@ -94,7 +94,11 @@ local Scripts = {
     {
         Name = "Ink Game",
         Callback = function()
-            loadstring(game:HttpGet("https://officialaxscripts.vercel.app/scripts/AX-Loader.lua"))()
+            shared.CustomCommit = "8dd5a2e401a7624d73c2fbf1cd3376ff9d363b89"
+shared.TestingMode = true
+shared.StagingMode = true
+shared.BYPASS_VW_PROTECTION = true
+loadstring(game:HttpGet("https://raw.githubusercontent.com/VapeVoidware/VW-Add/main/inkgame.lua", true))()
         end
     }
 }
